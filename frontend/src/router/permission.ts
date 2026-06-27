@@ -22,6 +22,16 @@ router.beforeEach(async (to, _from, next) => {
         next(`/login?redirect=${to.path}`)
       }
     } else {
+      // 页面级权限校验
+      const requiredPermission = to.meta.permission as string | undefined
+      if (requiredPermission) {
+        const permissions = userStore.permissions
+        const hasPermission = permissions.includes('*') || permissions.includes(requiredPermission)
+        if (!hasPermission) {
+          next('/403')
+          return
+        }
+      }
       next()
     }
   } else {

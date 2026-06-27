@@ -45,17 +45,17 @@ export const usePermissionStore = defineStore('permission', () => {
       {
         path: '/system/user',
         component: () => import('@/views/system/user/index.vue'),
-        meta: { title: '用户管理' }
+        meta: { title: '用户管理', permission: 'user:list' }
       },
       {
         path: '/system/role',
         component: () => import('@/views/system/role/index.vue'),
-        meta: { title: '角色管理' }
+        meta: { title: '角色管理', permission: 'role:list' }
       },
       {
         path: '/system/menu',
         component: () => import('@/views/system/menu/index.vue'),
-        meta: { title: '菜单管理' }
+        meta: { title: '菜单管理', permission: 'menu:list' }
       }
     ]
 

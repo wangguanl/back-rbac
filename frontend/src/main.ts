@@ -6,6 +6,7 @@ import 'element-plus/dist/index.css'
 import App from './App.vue'
 import router from './router'
 import './router/permission'
+import { setupDirectives } from './directives'
 
 const app = createApp(App)
 
@@ -15,5 +16,7 @@ pinia.use(piniaPluginPersistedstate)
 app.use(pinia)
 app.use(router)
 app.use(ElementPlus)
+
+setupDirectives(app)
 
 app.mount('#app')

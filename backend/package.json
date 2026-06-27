@@ -10,7 +10,8 @@
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
-    "seed": "ts-node-dev -r tsconfig-paths/register src/seed/seed.ts"
+    "seed": "ts-node-dev -r tsconfig-paths/register src/seed/seed.ts",
+    "docs:generate": "npx swagger-jsdoc -d swagger.config.cjs -o docs/swagger.json ./src/modules/auth/*.ts ./src/modules/user/*.ts ./src/modules/role/*.ts ./src/modules/menu/*.ts"
   },
   "keywords": [],
   "author": "",
@@ -25,7 +26,9 @@
     "express": "^5.2.1",
     "ioredis": "^5.11.1",
     "jsonwebtoken": "^9.0.3",
-    "pg": "^8.22.0"
+    "pg": "^8.22.0",
+    "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-express": "^5.0.1"
   },
   "devDependencies": {
     "@types/cors": "^2.8.19",
@@ -33,6 +36,8 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^26.0.1",
     "@types/pg": "^8.20.0",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
     "prisma": "^7.8.0",
     "ts-node-dev": "^2.0.0",
     "tsconfig-paths": "^4.2.0",

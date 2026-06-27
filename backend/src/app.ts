@@ -1,5 +1,7 @@
 import express from 'express'
 import cors from 'cors'
+import swaggerUi from 'swagger-ui-express'
+import swaggerSpec from '../swagger.config.cjs'
 import { errorHandler } from '@/middleware/error.middleware'
 import authRoutes from '@/modules/auth/auth.route'
 import userRoutes from '@/modules/user/user.route'
@@ -12,6 +14,9 @@ const app = express()
 app.use(cors())
 app.use(express.json())
 app.use(express.urlencoded({ extended: true }))
+
+// Swagger 文档
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec))
 
 // 路由
 app.use('/api/auth', authRoutes)

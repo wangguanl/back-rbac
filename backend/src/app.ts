@@ -2,6 +2,9 @@ import express from 'express'
 import cors from 'cors'
 import { errorHandler } from '@/middleware/error.middleware'
 import authRoutes from '@/modules/auth/auth.route'
+import userRoutes from '@/modules/user/user.route'
+import roleRoutes from '@/modules/role/role.route'
+import menuRoutes from '@/modules/menu/menu.route'
 
 const app = express()
 
@@ -12,6 +15,9 @@ app.use(express.urlencoded({ extended: true }))
 
 // 路由
 app.use('/api/auth', authRoutes)
+app.use('/api/users', userRoutes)
+app.use('/api/roles', roleRoutes)
+app.use('/api/menus', menuRoutes)
 
 // 健康检查
 app.get('/api/health', (req, res) => {

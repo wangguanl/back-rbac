@@ -1,0 +1,144 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// 用户表
+model User {
+  id         BigInt   @id @default(autoincrement())
+  username   String   @unique @db.VarChar(50)
+  password   String   @db.VarChar(255)
+  nickname   String?  @db.VarChar(50)
+  avatar     String?  @db.VarChar(255)
+  email      String?  @db.VarChar(100)
+  phone      String?  @db.VarChar(20)
+  status     Int      @default(1)
+  deptId     BigInt?  @map("dept_id")
+  createBy   BigInt?  @map("create_by")
+  createTime DateTime @default(now()) @map("create_time")
+  updateBy   BigInt?  @map("update_by")
+  updateTime DateTime? @updatedAt @map("update_time")
+  deleted    Int      @default(0)
+
+  roles      UserRole[]
+  @@map("sys_user")
+}
+
+// 角色表
+model Role {
+  id          BigInt   @id @default(autoincrement())
+  code        String   @unique @db.VarChar(50)
+  name        String   @db.VarChar(50)
+  sort        Int      @default(0)
+  description String?  @db.VarChar(255)
+  status      Int      @default(1)
+  createBy    BigInt?  @map("create_by")
+  createTime  DateTime @default(now()) @map("create_time")
+  updateBy    BigInt?  @map("update_by")
+  updateTime  DateTime? @updatedAt @map("update_time")
+  deleted     Int      @default(0)
+
+  users       UserRole[]
+  menus       RoleMenu[]
+
+  @@map("sys_role")
+}
+
+// 菜单表
+model Menu {
+  id             BigInt   @id @default(autoincrement())
+  parentId       BigInt   @default(0) @map("parent_id")
+  path           String?  @db.VarChar(200)
+  name           String   @db.VarChar(50)
+  icon           String?  @db.VarChar(50)
+  component      String?  @db.VarChar(200)
+  componentName  String?  @db.VarChar(100) @map("component_name")
+  redirect       String?  @db.VarChar(200)
+  sort           Int      @default(0)
+  type           Int
+  title          String?  @db.VarChar(50)
+  breadcrumb     Int      @default(1)
+  hidden         Int      @default(0)
+  keepAlive      Int      @default(1) @map("keep_alive")
+  affix          Int      @default(0)
+  permission     String?  @db.VarChar(100)
+  status         Int      @default(1)
+  createBy       BigInt?  @map("create_by")
+  createTime     DateTime @default(now()) @map("create_time")
+  updateBy       BigInt?  @map("update_by")
+  updateTime     DateTime? @updatedAt @map("update_time")
+  deleted        Int      @default(0)
+
+  roles          RoleMenu[]
+
+  @@map("sys_menu")
+}
+
+// 用户-角色关联表
+model UserRole {
+  id         BigInt   @id @default(autoincrement())
+  userId     BigInt   @map("user_id")
+  roleId     BigInt   @map("role_id")
+  createTime DateTime @default(now()) @map("create_time")
+
+  user       User     @relation(fields: [userId], references: [id])
+  role       Role     @relation(fields: [roleId], references: [id])
+
+  @@unique([userId, roleId])
+  @@map("sys_user_role")
+}
+
+// 角色-菜单关联表
+model RoleMenu {
+  id         BigInt   @id @default(autoincrement())
+  roleId     BigInt   @map("role_id")
+  menuId     BigInt   @map("menu_id")
+  createTime DateTime @default(now()) @map("create_time")
+
+  role       Role     @relation(fields: [roleId], references: [id])
+  menu       Menu     @relation(fields: [menuId], references: [id])
+
+  @@unique([roleId, menuId])
+  @@map("sys_role_menu")
+}
+
+// 操作日志表
+model SysLog {
+  id         BigInt   @id @default(autoincrement())
+  userId     BigInt?  @map("user_id")
+  username   String?  @db.VarChar(50)
+  module     String?  @db.VarChar(100)
+  action     String?  @db.VarChar(50)
+  method     String?  @db.VarChar(10)
+  url        String?  @db.VarChar(500)
+  ip         String?  @db.VarChar(50)
+  location   String?  @db.VarChar(255)
+  params     String?  @db.Text
+  result     String?  @db.Text
+  status     Int?
+  errorMsg   String?  @db.Text @map("error_msg")
+  duration   Int?
+  createTime DateTime @default(now()) @map("create_time")
+
+  @@map("sys_log")
+}
+
+// 登录日志表
+model SysLoginLog {
+  id         BigInt   @id @default(autoincrement())
+  userId     BigInt?  @map("user_id")
+  username   String?  @db.VarChar(50)
+  ip         String?  @db.VarChar(50)
+  location   String?  @db.VarChar(255)
+  device     String?  @db.VarChar(100)
+  browser    String?  @db.VarChar(100)
+  os         String?  @db.VarChar(100)
+  status     Int?
+  msg        String?  @db.VarChar(255)
+  createTime DateTime @default(now()) @map("create_time")
+
+  @@map("sys_login_log")
+}

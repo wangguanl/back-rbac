@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
 import Layout from '@/components/layout/Layout.vue'
+import { getMenuTreeApi, getMenuRoutesApi } from '@/api/menu'
 import type { MenuTreeNode } from '@/types/menu'
 
 export const usePermissionStore = defineStore('permission', () => {
@@ -9,55 +10,15 @@ export const usePermissionStore = defineStore('permission', () => {
   const menuList = ref<MenuTreeNode[]>([])
 
   async function loadRoutes() {
-    // TODO: 替换为真实 API 调用 getMenuTreeApi()
-    const mockMenus: MenuTreeNode[] = [
-      {
-        id: 1, parentId: 0, name: '系统管理', type: 'directory',
-        path: '/system', component: '', icon: 'Setting', permission: '',
-        sort: 1, status: 1, createdAt: '', updatedAt: '',
-        children: [
-          {
-            id: 2, parentId: 1, name: '用户管理', type: 'menu',
-            path: '/system/user', component: '', icon: 'User', permission: 'user:list',
-            sort: 1, status: 1, createdAt: '', updatedAt: '',
-            children: []
-          },
-          {
-            id: 3, parentId: 1, name: '角色管理', type: 'menu',
-            path: '/system/role', component: '', icon: 'Avatar', permission: 'role:list',
-            sort: 2, status: 1, createdAt: '', updatedAt: '',
-            children: []
-          },
-          {
-            id: 4, parentId: 1, name: '菜单管理', type: 'menu',
-            path: '/system/menu', component: '', icon: 'Menu', permission: 'menu:list',
-            sort: 3, status: 1, createdAt: '', updatedAt: '',
-            children: []
-          }
-        ]
-      }
-    ]
+    // 获取菜单树（用于侧边栏渲染）
+    const menuRes = await getMenuTreeApi()
+    menuList.value = menuRes.data
 
-    menuList.value = mockMenus
+    // 获取路由（用于动态路由注册）
+    const routeRes = await getMenuRoutesApi()
+    const routeMenus = routeRes.data
 
-    // 动态路由：系统管理子页面
-    const systemRoutes: RouteRecordRaw[] = [
-      {
-        path: '/system/user',
-        component: () => import('@/views/system/user/index.vue'),
-        meta: { title: '用户管理', permission: 'user:list' }
-      },
-      {
-        path: '/system/role',
-        component: () => import('@/views/system/role/index.vue'),
-        meta: { title: '角色管理', permission: 'role:list' }
-      },
-      {
-        path: '/system/menu',
-        component: () => import('@/views/system/menu/index.vue'),
-        meta: { title: '菜单管理', permission: 'menu:list' }
-      }
-    ]
+    const dynamicRoutes = generateRoutes(routeMenus)
 
     // 仪表盘 base route
     const dashboardRoute: RouteRecordRaw = {
@@ -73,15 +34,40 @@ export const usePermissionStore = defineStore('permission', () => {
       ]
     }
 
-    // 系统管理 layout route
-    const systemRoute: RouteRecordRaw = {
-      path: '/system',
-      component: Layout,
-      children: systemRoutes
+    routes.value = [dashboardRoute, ...dynamicRoutes]
+    return routes.value
+  }
+
+  function generateRoutes(menus: MenuTreeNode[]): RouteRecordRaw[] {
+    const result: RouteRecordRaw[] = []
+    const componentMap: Record<string, string> = {
+      'user': '@/views/system/user/index.vue',
+      'role': '@/views/system/role/index.vue',
+      'menu': '@/views/system/menu/index.vue'
     }
 
-    routes.value = [dashboardRoute, systemRoute]
-    return routes.value
+    for (const menu of menus) {
+      if (menu.type === 'directory') {
+        const route: RouteRecordRaw = {
+          path: menu.path,
+          component: Layout,
+          redirect: menu.children?.[0]?.path || menu.path,
+          meta: { title: menu.name },
+          children: []
+        }
+        if (menu.children) {
+          for (const child of menu.children) {
+            route.children!.push({
+              path: child.path.startsWith('/') ? child.path.substring(menu.path.length + 1) : child.path,
+              component: () => import('@/views/system/' + (componentMap[child.name] || 'user') + '/index.vue'),
+              meta: { title: child.name, permission: child.permission }
+            })
+          }
+        }
+        result.push(route)
+      }
+    }
+    return result
   }
 
   return { routes, menuList, loadRoutes }

@@ -8,8 +8,8 @@ export interface UserInfo {
   status: number
   roles: string[]
   permissions: string[]
-  createdAt: string
-  updatedAt: string
+  createdAt?: string
+  updatedAt?: string
 }
 
 /** 登录请求参数 */

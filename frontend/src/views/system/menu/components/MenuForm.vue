@@ -46,6 +46,7 @@
 <script setup lang="ts">
 import { ref, reactive, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { createMenuApi, updateMenuApi, getMenuByIdApi } from '@/api/menu'
 
 const props = defineProps<{ visible: boolean; mode: 'add' | 'edit'; menuId: number; parentId: number }>()
 const emit = defineEmits<{ 'update:visible': [val: boolean]; success: [] }>()
@@ -54,7 +55,7 @@ const formRef = ref()
 const submitting = ref(false)
 
 const form = reactive({
-  type: 'menu' as string,
+  type: 'menu' as 'directory' | 'menu' | 'button',
   name: '',
   icon: '',
   path: '',
@@ -68,16 +69,22 @@ const rules = {
   type: [{ required: true, message: '请选择菜单类型', trigger: 'change' }]
 }
 
-watch(() => props.visible, (val) => {
+watch(() => props.visible, async (val) => {
   if (val) {
     if (props.mode === 'edit' && props.menuId) {
-      form.type = 'menu'
-      form.name = '用户管理'
-      form.icon = 'User'
-      form.path = '/system/user'
-      form.permission = 'user:list'
-      form.sort = 1
-      form.status = 1
+      try {
+        const res = await getMenuByIdApi(props.menuId)
+        const m = res.data
+        form.type = m.type
+        form.name = m.name
+        form.icon = m.icon || ''
+        form.path = m.path || ''
+        form.permission = m.permission || ''
+        form.sort = m.sort || 0
+        form.status = m.status
+      } catch {
+        ElMessage.error('获取菜单信息失败')
+      }
     } else {
       form.type = 'menu'
       form.name = ''
@@ -94,11 +101,31 @@ async function handleSubmit() {
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
   submitting.value = true
-  await new Promise(r => setTimeout(r, 500))
-  ElMessage.success(props.mode === 'add' ? '新增成功' : '编辑成功')
-  submitting.value = false
-  emit('update:visible', false)
-  emit('success')
+  try {
+    const data = {
+      type: form.type,
+      name: form.name,
+      icon: form.icon,
+      path: form.path,
+      permission: form.permission,
+      sort: form.sort,
+      status: form.status,
+      parentId: props.parentId || undefined
+    }
+    if (props.mode === 'add') {
+      await createMenuApi(data)
+    } else {
+      const { parentId: _, ...upd } = data
+      await updateMenuApi(props.menuId, upd)
+    }
+    ElMessage.success(props.mode === 'add' ? '新增成功' : '编辑成功')
+    emit('update:visible', false)
+    emit('success')
+  } catch {
+    ElMessage.error('操作失败')
+  } finally {
+    submitting.value = false
+  }
 }
 
 function handleClose() {

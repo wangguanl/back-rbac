@@ -51,6 +51,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getMenuTreeApi, deleteMenuApi } from '@/api/menu'
 import MenuForm from './components/MenuForm.vue'
 
 const loading = ref(false)
@@ -59,20 +60,6 @@ const formVisible = ref(false)
 const formMode = ref<'add' | 'edit'>('add')
 const currentId = ref(0)
 const parentId = ref(0)
-
-// TODO: 替换为真实 API 调用
-const mockMenus = [
-  {
-    id: 1, name: '系统管理', type: 'directory', icon: 'Setting', path: '/system',
-    permission: '', sort: 1, status: 1,
-    children: [
-      { id: 2, name: '用户管理', type: 'menu', icon: 'User', path: '/system/user', permission: 'user:list', sort: 1, status: 1 },
-      { id: 3, name: '角色管理', type: 'menu', icon: 'Avatar', path: '/system/role', permission: 'role:list', sort: 2, status: 1 },
-      { id: 4, name: '菜单管理', type: 'menu', icon: 'Menu', path: '/system/menu', permission: 'menu:list', sort: 3, status: 1 },
-      { id: 5, name: '新增用户', type: 'button', icon: '', path: '', permission: 'user:add', sort: 1, status: 1 }
-    ]
-  }
-]
 
 function typeLabel(type: string) {
   const map: Record<string, string> = { directory: '目录', menu: '菜单', button: '按钮' }
@@ -86,9 +73,14 @@ function typeTag(type: string) {
 
 async function fetchData() {
   loading.value = true
-  await new Promise(r => setTimeout(r, 300))
-  tableData.value = mockMenus
-  loading.value = false
+  try {
+    const res = await getMenuTreeApi()
+    tableData.value = res.data || []
+  } catch {
+    ElMessage.error('获取菜单列表失败')
+  } finally {
+    loading.value = false
+  }
 }
 
 function handleAdd(pid: number) {
@@ -110,9 +102,12 @@ async function handleDelete(row: any) {
     ElMessage.warning('包含子菜单，无法删除')
     return
   }
-  await ElMessageBox.confirm(`确定删除菜单 "${row.name}" 吗？`, '提示', { type: 'warning' })
-  ElMessage.success('删除成功')
-  fetchData()
+  try {
+    await ElMessageBox.confirm(`确定删除菜单 "${row.name}" 吗？`, '提示', { type: 'warning' })
+    await deleteMenuApi(row.id)
+    ElMessage.success('删除成功')
+    fetchData()
+  } catch { /* 取消 */ }
 }
 
 onMounted(() => fetchData())

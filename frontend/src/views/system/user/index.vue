@@ -31,7 +31,7 @@
         <el-table-column prop="email" label="邮箱" min-width="160" />
         <el-table-column label="角色" min-width="160">
           <template #default="{ row }">
-            <el-tag v-for="r in row.roles" :key="r" size="small" style="margin-right: 4px">{{ r }}</el-tag>
+            <el-tag v-for="r in row.roles" :key="r" size="small" style="margin-right: 4px">{{ typeof r === 'object' ? r.name : r }}</el-tag>
           </template>
         </el-table-column>
         <el-table-column prop="status" label="状态" width="80">
@@ -46,7 +46,7 @@
           <template #default="{ row }">
             <el-button link type="primary" v-auth="'user:edit'" @click="handleEdit(row)">编辑</el-button>
             <el-button link type="primary" v-auth="'user:assign'" @click="handleAssignRole(row)">分配角色</el-button>
-            <el-button link type="warning" @click="handleResetPassword(row)">重置密码</el-button>
+            <el-button link type="warning" v-auth="'user:resetPwd'" @click="handleResetPassword(row)">重置密码</el-button>
             <el-button link type="danger" v-auth="'user:delete'" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
@@ -74,6 +74,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getUserListApi, deleteUserApi, updateUserApi } from '@/api/user'
 import UserForm from './components/UserForm.vue'
 import AssignRoleDialog from './components/AssignRoleDialog.vue'
 import ResetPasswordDialog from './components/ResetPasswordDialog.vue'
@@ -90,24 +91,17 @@ const currentId = ref(0)
 const search = reactive({ username: '', status: undefined as number | undefined })
 const pagination = reactive({ page: 1, pageSize: 10, total: 0 })
 
-// TODO: 替换为真实 API 调用
-const mockUsers = [
-  { id: 1, username: 'admin', nickname: '管理员', email: 'admin@example.com', roles: ['超级管理员'], status: 1 },
-  { id: 2, username: 'zhangsan', nickname: '张三', email: 'zhangsan@example.com', roles: ['编辑'], status: 1 },
-  { id: 3, username: 'lisi', nickname: '李四', email: 'lisi@example.com', roles: ['访客'], status: 0 },
-  { id: 4, username: 'wangwu', nickname: '王五', email: 'wangwu@example.com', roles: ['编辑', '审核员'], status: 1 },
-]
-
 async function fetchData() {
   loading.value = true
-  await new Promise(r => setTimeout(r, 300))
-  let data = [...mockUsers]
-  if (search.username) data = data.filter(u => u.username.includes(search.username))
-  if (search.status !== undefined) data = data.filter(u => u.status === search.status)
-  pagination.total = data.length
-  const start = (pagination.page - 1) * pagination.pageSize
-  tableData.value = data.slice(start, start + pagination.pageSize)
-  loading.value = false
+  try {
+    const res = await getUserListApi({ page: pagination.page, pageSize: pagination.pageSize, username: search.username || undefined, status: search.status })
+    tableData.value = res.data.list || []
+    pagination.total = res.data.total || 0
+  } catch {
+    ElMessage.error('获取用户列表失败')
+  } finally {
+    loading.value = false
+  }
 }
 
 function handleSearch() {
@@ -148,21 +142,34 @@ function handleResetPassword(row: any) {
 }
 
 async function handleStatusChange(row: any, val: boolean) {
-  ElMessage.success(`${val ? '启用' : '禁用'}成功`)
-  row.status = val ? 1 : 0
+  try {
+    await updateUserApi(row.id, { status: val ? 1 : 0 } as any)
+    ElMessage.success(`${val ? '启用' : '禁用'}成功`)
+    fetchData()
+  } catch {
+    ElMessage.error('操作失败')
+  }
 }
 
 async function handleDelete(row: any) {
-  await ElMessageBox.confirm(`确定删除用户 "${row.username}" 吗？`, '提示', { type: 'warning' })
-  ElMessage.success('删除成功')
-  fetchData()
+  try {
+    await ElMessageBox.confirm(`确定删除用户 "${row.username}" 吗？`, '提示', { type: 'warning' })
+    await deleteUserApi(row.id)
+    ElMessage.success('删除成功')
+    fetchData()
+  } catch { /* 取消 */ }
 }
 
 async function handleBatchDelete() {
-  await ElMessageBox.confirm(`确定删除选中的 ${selectedIds.value.length} 个用户吗？`, '提示', { type: 'warning' })
-  ElMessage.success('批量删除成功')
-  selectedIds.value = []
-  fetchData()
+  try {
+    await ElMessageBox.confirm(`确定删除选中的 ${selectedIds.value.length} 个用户吗？`, '提示', { type: 'warning' })
+    for (const id of selectedIds.value) {
+      await deleteUserApi(id)
+    }
+    ElMessage.success('批量删除成功')
+    selectedIds.value = []
+    fetchData()
+  } catch { /* 取消 */ }
 }
 
 onMounted(() => fetchData())
@@ -170,12 +177,8 @@ onMounted(() => fetchData())
 
 <style scoped lang="scss">
 .user-page {
-  .search-form {
-    margin-bottom: 16px;
-  }
-  .toolbar {
-    margin-bottom: 16px;
-  }
+  .search-form { margin-bottom: 16px; }
+  .toolbar { margin-bottom: 16px; }
   .pagination {
     margin-top: 16px;
     display: flex;

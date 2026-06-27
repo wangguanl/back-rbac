@@ -59,6 +59,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { getRoleListApi, deleteRoleApi } from '@/api/role'
 import RoleForm from './components/RoleForm.vue'
 import PermissionTree from './components/PermissionTree.vue'
 
@@ -72,24 +73,17 @@ const currentId = ref(0)
 const search = reactive({ name: '', code: '' })
 const pagination = reactive({ page: 1, pageSize: 10, total: 0 })
 
-// TODO: 替换为真实 API 调用
-const mockRoles = [
-  { id: 1, name: '超级管理员', code: 'super_admin', description: '拥有系统所有权限', status: 1 },
-  { id: 2, name: '编辑', code: 'editor', description: '可以编辑内容', status: 1 },
-  { id: 3, name: '访客', code: 'visitor', description: '只能查看内容', status: 0 },
-  { id: 4, name: '审核员', code: 'reviewer', description: '可以审核内容', status: 1 },
-]
-
 async function fetchData() {
   loading.value = true
-  await new Promise(r => setTimeout(r, 300))
-  let data = [...mockRoles]
-  if (search.name) data = data.filter(r => r.name.includes(search.name))
-  if (search.code) data = data.filter(r => r.code.includes(search.code))
-  pagination.total = data.length
-  const start = (pagination.page - 1) * pagination.pageSize
-  tableData.value = data.slice(start, start + pagination.pageSize)
-  loading.value = false
+  try {
+    const res = await getRoleListApi({ page: pagination.page, pageSize: pagination.pageSize, name: search.name || undefined, code: search.code || undefined })
+    tableData.value = res.data.list || []
+    pagination.total = res.data.total || 0
+  } catch {
+    ElMessage.error('获取角色列表失败')
+  } finally {
+    loading.value = false
+  }
 }
 
 function handleSearch() {
@@ -121,9 +115,12 @@ function handleAssignPermission(row: any) {
 }
 
 async function handleDelete(row: any) {
-  await ElMessageBox.confirm(`确定删除角色 "${row.name}" 吗？`, '提示', { type: 'warning' })
-  ElMessage.success('删除成功')
-  fetchData()
+  try {
+    await ElMessageBox.confirm(`确定删除角色 "${row.name}" 吗？`, '提示', { type: 'warning' })
+    await deleteRoleApi(row.id)
+    ElMessage.success('删除成功')
+    fetchData()
+  } catch { /* 取消 */ }
 }
 
 onMounted(() => fetchData())

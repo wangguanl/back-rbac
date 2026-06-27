@@ -27,6 +27,7 @@
 <script setup lang="ts">
 import { ref, reactive } from 'vue'
 import { ElMessage } from 'element-plus'
+import { resetUserPasswordApi } from '@/api/user'
 
 const props = defineProps<{ visible: boolean; userId: number }>()
 const emit = defineEmits<{ 'update:visible': [val: boolean] }>()
@@ -59,10 +60,15 @@ async function handleSubmit() {
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
   submitting.value = true
-  await new Promise(r => setTimeout(r, 300))
-  ElMessage.success('密码重置成功')
-  submitting.value = false
-  emit('update:visible', false)
+  try {
+    await resetUserPasswordApi(props.userId, form.password)
+    ElMessage.success('密码重置成功')
+    emit('update:visible', false)
+  } catch {
+    ElMessage.error('重置失败')
+  } finally {
+    submitting.value = false
+  }
 }
 
 function handleClose() {

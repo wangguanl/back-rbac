@@ -1,18 +1,16 @@
 import request from '@/utils/request'
-import type { ApiResponse } from '@/types/api'
-import type { LoginParams, LoginResult, UserInfo } from '@/types/user'
 
 /** 登录 */
-export function loginApi(params: LoginParams) {
-  return request.post<ApiResponse<LoginResult>>('/auth/login', params)
+export function loginApi(data: { username: string; password: string }) {
+  return request.post<{ token: string }>('/auth/login', data)
 }
 
-/** 获取当前用户信息 */
+/** 获取用户信息 */
 export function getUserInfoApi() {
-  return request.get<ApiResponse<UserInfo>>('/auth/userinfo')
+  return request.get<{ id: number; username: string; nickname: string; email: string; avatar: string; status: number; roles: string[]; permissions: string[] }>('/auth/userinfo')
 }
 
 /** 退出登录 */
 export function logoutApi() {
-  return request.post<ApiResponse<null>>('/auth/logout')
+  return request.post('/auth/logout')
 }

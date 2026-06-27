@@ -30,6 +30,7 @@
 <script setup lang="ts">
 import { ref, reactive, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { createRoleApi, updateRoleApi, getRoleByIdApi } from '@/api/role'
 
 const props = defineProps<{ visible: boolean; mode: 'add' | 'edit'; roleId: number }>()
 const emit = defineEmits<{ 'update:visible': [val: boolean]; success: [] }>()
@@ -49,13 +50,19 @@ const rules = {
   code: [{ required: true, message: '请输入角色编码', trigger: 'blur' }]
 }
 
-watch(() => props.visible, (val) => {
+watch(() => props.visible, async (val) => {
   if (val) {
     if (props.mode === 'edit' && props.roleId) {
-      form.name = '编辑'
-      form.code = 'editor'
-      form.description = '可以编辑内容'
-      form.status = 1
+      try {
+        const res = await getRoleByIdApi(props.roleId)
+        const r = res.data
+        form.name = r.name
+        form.code = r.code
+        form.description = r.description || ''
+        form.status = r.status
+      } catch {
+        ElMessage.error('获取角色信息失败')
+      }
     } else {
       form.name = ''
       form.code = ''
@@ -69,11 +76,21 @@ async function handleSubmit() {
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
   submitting.value = true
-  await new Promise(r => setTimeout(r, 500))
-  ElMessage.success(props.mode === 'add' ? '新增成功' : '编辑成功')
-  submitting.value = false
-  emit('update:visible', false)
-  emit('success')
+  try {
+    const data = { name: form.name, code: form.code, description: form.description, status: form.status }
+    if (props.mode === 'add') {
+      await createRoleApi(data)
+    } else {
+      await updateRoleApi(props.roleId, data)
+    }
+    ElMessage.success(props.mode === 'add' ? '新增成功' : '编辑成功')
+    emit('update:visible', false)
+    emit('success')
+  } catch {
+    ElMessage.error('操作失败')
+  } finally {
+    submitting.value = false
+  }
 }
 
 function handleClose() {

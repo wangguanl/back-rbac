@@ -28,37 +28,48 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { assignRoleMenusApi, getRoleMenusApi } from '@/api/role'
+import { getMenuTreeApi } from '@/api/menu'
 
 const props = defineProps<{ visible: boolean; roleId: number }>()
 const emit = defineEmits<{ 'update:visible': [val: boolean]; success: [] }>()
 
 const treeRef = ref()
 const submitting = ref(false)
+const menuTree = ref<any[]>([])
+const checkedKeys = ref<number[]>([])
 
-// TODO: 替换为真实 API 调用
-const menuTree = [
-  {
-    id: 1, label: '系统管理',
-    children: [
-      { id: 2, label: '用户管理' },
-      { id: 3, label: '角色管理' },
-      { id: 4, label: '菜单管理' }
-    ]
+watch(() => props.visible, async (val) => {
+  if (val) {
+    try {
+      const [treeRes, menuRes] = await Promise.all([
+        getMenuTreeApi(),
+        getRoleMenusApi(props.roleId)
+      ])
+      menuTree.value = treeRes.data || []
+      checkedKeys.value = menuRes.data || []
+    } catch {
+      ElMessage.error('获取权限数据失败')
+    }
   }
-]
-const checkedKeys = [1, 2]
+})
 
 async function handleSubmit() {
   const checkedIds = treeRef.value.getCheckedKeys()
   const halfCheckedIds = treeRef.value.getHalfCheckedKeys()
   const allIds = [...checkedIds, ...halfCheckedIds]
   submitting.value = true
-  await new Promise(r => setTimeout(r, 300))
-  ElMessage.success(`权限分配成功，选中 ${allIds.length} 个菜单`)
-  submitting.value = false
-  emit('update:visible', false)
-  emit('success')
+  try {
+    await assignRoleMenusApi(props.roleId, allIds)
+    ElMessage.success('权限分配成功')
+    emit('update:visible', false)
+    emit('success')
+  } catch {
+    ElMessage.error('分配失败')
+  } finally {
+    submitting.value = false
+  }
 }
 </script>

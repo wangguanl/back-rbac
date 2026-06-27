@@ -279,13 +279,13 @@ pnpm lint
 ## 本阶段交付物
 
 - [x] Vue3 + Vite项目框架
-- [ ] 路由配置
-- [ ] Pinia Store
-- [ ] Axios请求封装
-- [ ] API接口封装
-- [ ] 工具函数
-- [ ] TypeScript类型
-- [ ] 错误页面
+- [x] 路由配置
+- [x] Pinia Store
+- [x] Axios请求封装
+- [x] API接口封装
+- [x] 工具函数
+- [x] TypeScript类型
+- [x] 错误页面
 
 ---
 

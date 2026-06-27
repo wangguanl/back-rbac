@@ -143,12 +143,12 @@ const { hasPermission } = usePermissions()
 
 ## 本阶段交付物
 
-- [ ] v-auth 权限指令
-- [ ] v-role 角色指令
-- [ ] usePermissions Hook
-- [ ] useAuth Hook
-- [ ] 页面级权限控制
-- [ ] 按钮级权限控制
+- [x] v-auth 权限指令
+- [x] v-role 角色指令
+- [x] usePermissions Hook
+- [x] useAuth Hook
+- [x] 页面级权限控制
+- [x] 按钮级权限控制
 
 ---
 

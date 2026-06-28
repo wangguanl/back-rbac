@@ -9,15 +9,19 @@ function pageToTreeNode(route: RouteRecordRaw): PermissionTreeNode | null {
   const title = (route.meta?.title as string) || name
   const buttons = (route.meta?.buttons as PermissionAction[]) || []
 
-  const children: PermissionTreeNode[] = buttons.map(btn => ({
-    permission: `${name}:${btn.action}`,
-    title: btn.title
-  }))
+  // list 作为叶子节点，分组节点 group:${name} 负责级联全选/反选
+  const children: PermissionTreeNode[] = [
+    { permission: `${name}:${perm.action}`, title: perm.title },
+    ...buttons.map(btn => ({
+      permission: `${name}:${btn.action}`,
+      title: btn.title
+    }))
+  ]
 
   return {
-    permission: `${name}:${perm.action}`,
+    permission: `group:${name}`,
     title,
-    children: children.length > 0 ? children : undefined
+    children
   }
 }
 

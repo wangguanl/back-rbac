@@ -5,6 +5,8 @@ export interface PermissionItem {
   action: string
   title: string
   kind: PermissionKind
+  /** 使用该权限的后端 API（与 backend/api-permission-bindings.ts 同步） */
+  apis?: readonly string[]
 }
 
 export interface PageRouteConfig {
@@ -47,7 +49,12 @@ export const routePermissionRegistry = {
           Add: { action: 'add', title: '新增', kind: 'both' },
           Edit: { action: 'edit', title: '编辑', kind: 'both' },
           Delete: { action: 'delete', title: '删除', kind: 'both' },
-          Assign: { action: 'assign', title: '分配角色', kind: 'both' },
+          Assign: {
+            action: 'assign',
+            title: '分配角色',
+            kind: 'both',
+            apis: ['GET /users/role-options', 'PUT /users/:id/roles']
+          },
           ResetPwd: { action: 'resetPwd', title: '重置密码', kind: 'both' }
         }
       },

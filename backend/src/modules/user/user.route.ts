@@ -2,6 +2,9 @@ import { Router } from 'express'
 import { UserController } from './user.controller'
 import { authMiddleware } from '@/middleware/auth.middleware'
 import { requirePermission } from '@/middleware/permission.middleware'
+import { ApiPermissionBind } from '@/common/api-permission-bindings'
+
+const userAssign = ApiPermissionBind.User.assign.permission
 
 const router = Router()
 const controller = new UserController()
@@ -44,6 +47,20 @@ router.use(authMiddleware)
  *         description: 成功获取列表
  */
 router.get('/', requirePermission('user:list'), controller.list)
+
+/**
+ * @openapi
+ * /users/role-options:
+ *   get:
+ *     summary: 获取可分配的角色选项（分配用户角色用）
+ *     tags: [用户管理]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 成功获取角色选项
+ */
+router.get('/role-options', requirePermission(userAssign), controller.listRoleOptions)
 
 /**
  * @openapi
@@ -188,7 +205,7 @@ router.delete('/:id', requirePermission('user:delete'), controller.delete)
  *       200:
  *         description: 分配成功
  */
-router.put('/:id/roles', requirePermission('user:assign'), controller.assignRoles)
+router.put('/:id/roles', requirePermission(userAssign), controller.assignRoles)
 
 /**
  * @openapi

@@ -27,33 +27,47 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { assignUserRolesApi, getUserByIdApi } from '@/api/user'
-import { getRoleListApi } from '@/api/role'
+import { assignUserRolesApi, getUserRoleOptionsApi, userAssignRoleBinding } from '@/api/user'
+import { useUserStore } from '@/stores/user'
 
-const props = defineProps<{ visible: boolean; userId: number }>()
+interface UserRoleItem {
+  id: number
+  name: string
+}
+
+const props = defineProps<{
+  visible: boolean
+  userId: number
+  /** 来自列表行的角色，用于回显，避免调用无权限的用户详情接口 */
+  initialRoles: UserRoleItem[]
+}>()
 const emit = defineEmits<{ 'update:visible': [val: boolean]; success: [] }>()
 
+const userStore = useUserStore()
 const submitting = ref(false)
 const selectedRoles = ref<number[]>([])
 const roleList = ref<{ id: number; name: string }[]>([])
 
-watch(() => props.visible, async (val) => {
-  if (val) {
-    selectedRoles.value = []
+watch(
+  () => [props.visible, props.userId, props.initialRoles] as const,
+  async ([visible]) => {
+    if (!visible) return
+
+    if (!userStore.permissions.includes(userAssignRoleBinding.permission)) {
+      ElMessage.error('无权限访问')
+      emit('update:visible', false)
+      return
+    }
+
+    selectedRoles.value = props.initialRoles.map(r => r.id)
     try {
-      const [roleRes, userRes] = await Promise.all([
-        getRoleListApi({ page: 1, pageSize: 100 }),
-        getUserByIdApi(props.userId)
-      ])
-      roleList.value = (roleRes.data || []).map((r: any) => ({ id: r.id, name: r.name }))
-      // 回显用户已有的角色
-      const userRoles = (userRes.data as any)?.roles || []
-      selectedRoles.value = userRoles.map((r: any) => r.id)
+      const roleRes = await getUserRoleOptionsApi()
+      roleList.value = roleRes.data || []
     } catch {
       ElMessage.error('获取角色列表失败')
     }
   }
-})
+)
 
 async function handleSubmit() {
   submitting.value = true

@@ -40,6 +40,11 @@ export class UserController {
     res.json(Result.success(data, '分配成功'))
   }
 
+  async listRoleOptions(req: Request, res: Response) {
+    const data = await userService.listRoleOptions()
+    res.json(Result.success(data))
+  }
+
   async resetPassword(req: Request, res: Response) {
     const { password } = req.body
     const data = await userService.resetPassword(Number(req.params.id), password)

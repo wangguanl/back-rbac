@@ -105,6 +105,16 @@ export class UserService {
     return { message: '分配成功' }
   }
 
+  /** 分配用户角色时的可选角色列表（仅需 user:assign，不要求 role:list） */
+  async listRoleOptions() {
+    const roles = await prisma.role.findMany({
+      where: { deleted: 0, status: 1 },
+      select: { id: true, name: true },
+      orderBy: { sort: 'asc' }
+    })
+    return roles.map(r => ({ id: Number(r.id), name: r.name }))
+  }
+
   async resetPassword(id: number, password: string) {
     const user = await prisma.user.findFirst({ where: { id: BigInt(id), deleted: 0 } })
     if (!user) throw new NotFoundException('用户不存在')

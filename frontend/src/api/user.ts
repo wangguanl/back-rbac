@@ -1,6 +1,10 @@
 import request from '@/utils/request'
-import type { ApiResponse, PageParams } from '@/types/api'
+import { Bind } from '@/router/routes/asyncRoutes'
+import type { PageParams } from '@/types/api'
 import type { UserInfo } from '@/types/user'
+
+/** 分配角色：按钮 ↔ API 权限绑定（见 routePermissionRegistry User.Assign.apis） */
+export const userAssignRoleBinding = Bind.System.User.Assign
 
 /** 获取用户列表 */
 export function getUserListApi(params: PageParams & { username?: string; status?: number }) {
@@ -27,7 +31,12 @@ export function deleteUserApi(id: number) {
   return request.delete<null>(`/users/${id}`)
 }
 
-/** 分配角色 */
+/** 分配角色 · GET /users/role-options */
+export function getUserRoleOptionsApi() {
+  return request.get<{ id: number; name: string }[]>('/users/role-options')
+}
+
+/** 分配角色 · PUT /users/:id/roles */
 export function assignUserRolesApi(id: number, roleIds: number[]) {
   return request.put<null>(`/users/${id}/roles`, { roleIds })
 }

@@ -37,6 +37,7 @@
         <el-table-column prop="status" label="状态" width="80">
           <template #default="{ row }">
             <el-switch
+            v-auth="P.System.User.Edit"
               :model-value="row.status === 1"
               @change="(val: boolean) => handleStatusChange(row, val)"
             />
@@ -66,7 +67,12 @@
     </el-card>
 
     <UserForm v-model:visible="formVisible" :mode="formMode" :user-id="currentId" @success="fetchData" />
-    <AssignRoleDialog v-model:visible="assignVisible" :user-id="currentId" @success="fetchData" />
+    <AssignRoleDialog
+      v-model:visible="assignVisible"
+      :user-id="currentId"
+      :initial-roles="currentUserRoles"
+      @success="fetchData"
+    />
     <ResetPasswordDialog v-model:visible="passwordVisible" :user-id="currentId" />
   </div>
 </template>
@@ -75,7 +81,11 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { P } from '@/router/routes/asyncRoutes'
-import { getUserListApi, deleteUserApi, updateUserApi } from '@/api/user'
+import {
+  getUserListApi,
+  deleteUserApi,
+  updateUserApi
+} from '@/api/user'
 import UserForm from './components/UserForm.vue'
 import AssignRoleDialog from './components/AssignRoleDialog.vue'
 import ResetPasswordDialog from './components/ResetPasswordDialog.vue'
@@ -88,6 +98,7 @@ const formMode = ref<'add' | 'edit'>('add')
 const assignVisible = ref(false)
 const passwordVisible = ref(false)
 const currentId = ref(0)
+const currentUserRoles = ref<{ id: number; name: string }[]>([])
 
 const search = reactive({ username: '', status: undefined as number | undefined })
 const pagination = reactive({ page: 1, pageSize: 10, total: 0 })
@@ -138,6 +149,9 @@ function handleEdit(row: any) {
 
 function handleAssignRole(row: any) {
   currentId.value = row.id
+  currentUserRoles.value = (row.roles || []).map((r: { id: number; name: string } | string) =>
+    typeof r === 'object' ? r : { id: 0, name: r }
+  )
   assignVisible.value = true
 }
 

@@ -23,7 +23,7 @@ export interface PermissionAction {
 }
 
 export interface PermissionTreeNode {
-  /** node-key，格式 `${name}:${action}` */
+  /** node-key：叶子为 `${name}:${action}`，分组为 `group:${name}`，根为 `root` */
   permission: string
   title: string
   children?: PermissionTreeNode[]

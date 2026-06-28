@@ -17,6 +17,21 @@ type PermissionKeyMap<T extends Registry> = {
   }
 }
 
+export interface PermissionBinding {
+  /** v-auth / requirePermission 使用的扁平 key */
+  permission: string
+  /** 声明使用该权限的后端 API */
+  apis?: readonly string[]
+}
+
+type PermissionBindingMap<T extends Registry> = {
+  [L in keyof T]: {
+    [P in keyof T[L]['pages']]: {
+      [K in keyof T[L]['pages'][P]['permissions']]: PermissionBinding
+    }
+  }
+}
+
 function pagePermissionItems(page: PageRouteConfig): PermissionItem[] {
   return Object.values(page.permissions)
 }
@@ -55,6 +70,38 @@ export function buildPermissionKeys<T extends Registry>(registry: T): Permission
       }
 
       pages[pageKey] = keys
+    }
+
+    result[layoutKey] = pages
+  }
+
+  return result
+}
+
+/** 注册表 → 按钮与 API 的权限绑定（permission + 可选 apis） */
+export function buildPermissionBindings<T extends Registry>(
+  registry: T,
+  keys: PermissionKeyMap<T>
+): PermissionBindingMap<T> {
+  const result = {} as PermissionBindingMap<T>
+
+  for (const layoutKey of Object.keys(registry) as (keyof T)[]) {
+    const layout = registry[layoutKey]
+    const pages = {} as PermissionBindingMap<T>[typeof layoutKey]
+
+    for (const pageKey of Object.keys(layout.pages) as (keyof typeof layout.pages)[]) {
+      const page = layout.pages[pageKey]
+      const bindings = {} as PermissionBindingMap<T>[typeof layoutKey][typeof pageKey]
+
+      for (const permKey of Object.keys(page.permissions) as (keyof typeof page.permissions)[]) {
+        const item = page.permissions[permKey]
+        bindings[permKey] = {
+          permission: keys[layoutKey][pageKey][permKey],
+          ...(item.apis ? { apis: item.apis } : {})
+        }
+      }
+
+      pages[pageKey] = bindings
     }
 
     result[layoutKey] = pages

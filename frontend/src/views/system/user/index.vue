@@ -37,8 +37,8 @@
         <el-table-column prop="status" label="状态" width="80">
           <template #default="{ row }">
             <el-switch
-            v-auth="P.System.User.Edit"
               :model-value="row.status === 1"
+              :disabled="!hasPermission(P.System.User.Edit)"
               @change="(val: boolean) => handleStatusChange(row, val)"
             />
           </template>
@@ -81,6 +81,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { P } from '@/router/routes/asyncRoutes'
+import { usePermissions } from '@/composables/usePermissions'
 import {
   getUserListApi,
   deleteUserApi,
@@ -89,6 +90,8 @@ import {
 import UserForm from './components/UserForm.vue'
 import AssignRoleDialog from './components/AssignRoleDialog.vue'
 import ResetPasswordDialog from './components/ResetPasswordDialog.vue'
+
+const { hasPermission } = usePermissions()
 
 const loading = ref(false)
 const tableData = ref<any[]>([])

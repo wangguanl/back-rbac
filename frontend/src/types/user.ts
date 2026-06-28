@@ -5,9 +5,10 @@ export interface UserInfo {
   nickname: string
   email: string
   avatar: string
+  phone?: string
   status: number
   roles: string[]
-  permissions: string[]
+  permissionGroups: import('./permission').RoutePermissionGroup[]
   createdAt?: string
   updatedAt?: string
 }

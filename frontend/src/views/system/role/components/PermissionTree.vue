@@ -9,12 +9,12 @@
       <el-form-item label="角色 ID">
         <span>{{ roleId }}</span>
       </el-form-item>
-      <el-form-item label="菜单权限">
+      <el-form-item label="权限">
         <el-tree
           ref="treeRef"
-          :data="menuTree"
+          :data="permissionTree"
           show-checkbox
-          node-key="id"
+          node-key="permission"
           :props="{ label: 'title', children: 'children' }"
           :default-checked-keys="checkedKeys"
           default-expand-all
@@ -31,26 +31,25 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { assignRoleMenusApi, getRoleMenusApi } from '@/api/role'
-import { getMenuTreeApi } from '@/api/menu'
+import { assignRolePermissionsApi, getRolePermissionsApi } from '@/api/role'
+import { asyncRoutes } from '@/router/routes/asyncRoutes'
+import { keysToPermissionGroups, permissionGroupsToKeys } from '@/router/routes/utils/permissionGroups'
+import { toPermissionTree } from '@/router/routes/utils/toPermissionTree'
+import type { PermissionTreeNode } from '@/types/permission'
 
 const props = defineProps<{ visible: boolean; roleId: number }>()
 const emit = defineEmits<{ 'update:visible': [val: boolean]; success: [] }>()
 
 const treeRef = ref()
 const submitting = ref(false)
-const menuTree = ref<any[]>([])
-const checkedKeys = ref<number[]>([])
+const permissionTree = ref<PermissionTreeNode[]>(toPermissionTree(asyncRoutes))
+const checkedKeys = ref<string[]>([])
 
 watch(() => props.visible, async (val) => {
   if (val) {
     try {
-      const [treeRes, menuRes] = await Promise.all([
-        getMenuTreeApi(),
-        getRoleMenusApi(props.roleId)
-      ])
-      menuTree.value = treeRes.data || []
-      checkedKeys.value = menuRes.data || []
+      const res = await getRolePermissionsApi(props.roleId)
+      checkedKeys.value = permissionGroupsToKeys(res.data || [])
     } catch {
       ElMessage.error('获取权限数据失败')
     }
@@ -58,12 +57,14 @@ watch(() => props.visible, async (val) => {
 })
 
 async function handleSubmit() {
-  const checkedIds = treeRef.value.getCheckedKeys()
-  const halfCheckedIds = treeRef.value.getHalfCheckedKeys()
-  const allIds = [...checkedIds, ...halfCheckedIds]
+  const checked = treeRef.value.getCheckedKeys() as string[]
+  const halfChecked = treeRef.value.getHalfCheckedKeys() as string[]
+  const allKeys = [...checked, ...halfChecked].filter(k => k !== 'root')
+  const groups = keysToPermissionGroups(allKeys)
+
   submitting.value = true
   try {
-    await assignRoleMenusApi(props.roleId, allIds)
+    await assignRolePermissionsApi(props.roleId, groups)
     ElMessage.success('权限分配成功')
     emit('update:visible', false)
     emit('success')

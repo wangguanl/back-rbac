@@ -1,5 +1,11 @@
 import { prisma } from '@/prisma/prisma.service'
 import { BadRequestException, NotFoundException } from '@/common/exception'
+import {
+  flattenPermissionGroups,
+  groupPermissions,
+  validatePermissionGroups,
+  type RoutePermissionGroup
+} from '@/common/permissions'
 
 export class RoleService {
   async list() {
@@ -40,26 +46,29 @@ export class RoleService {
     return { message: '删除成功' }
   }
 
-  async getMenus(roleId: number) {
+  async getPermissions(roleId: number): Promise<RoutePermissionGroup[]> {
     const role = await prisma.role.findFirst({ where: { id: BigInt(roleId), deleted: 0 } })
     if (!role) throw new NotFoundException('角色不存在')
 
-    const roleMenus = await prisma.roleMenu.findMany({
+    const rows = await prisma.rolePermission.findMany({
       where: { roleId: BigInt(roleId) },
-      include: { menu: true }
+      select: { permission: true }
     })
-    return roleMenus.map(rm => Number(rm.menuId))
+    return groupPermissions(rows.map(r => r.permission))
   }
 
-  async assignMenus(roleId: number, menuIds: number[]) {
+  async assignPermissions(roleId: number, groups: RoutePermissionGroup[]): Promise<{ message: string }> {
     const role = await prisma.role.findFirst({ where: { id: BigInt(roleId), deleted: 0 } })
     if (!role) throw new NotFoundException('角色不存在')
 
+    const normalized = validatePermissionGroups(groups)
+    const flat = flattenPermissionGroups(normalized)
+
     await prisma.$transaction(async (tx) => {
-      await tx.roleMenu.deleteMany({ where: { roleId: BigInt(roleId) } })
-      if (menuIds.length > 0) {
-        await tx.roleMenu.createMany({
-          data: menuIds.map(menuId => ({ roleId: BigInt(roleId), menuId: BigInt(menuId) }))
+      await tx.rolePermission.deleteMany({ where: { roleId: BigInt(roleId) } })
+      if (flat.length > 0) {
+        await tx.rolePermission.createMany({
+          data: flat.map(permission => ({ roleId: BigInt(roleId), permission }))
         })
       }
     })

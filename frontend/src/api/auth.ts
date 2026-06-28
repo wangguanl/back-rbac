@@ -1,4 +1,5 @@
 import request from '@/utils/request'
+import type { UserInfo } from '@/types/user'
 
 /** 登录 */
 export function loginApi(data: { username: string; password: string }) {
@@ -7,7 +8,7 @@ export function loginApi(data: { username: string; password: string }) {
 
 /** 获取用户信息 */
 export function getUserInfoApi() {
-  return request.get<{ id: number; username: string; nickname: string; email: string; avatar: string; status: number; roles: string[]; permissions: string[] }>('/auth/userinfo')
+  return request.get<UserInfo>('/auth/userinfo')
 }
 
 /** 退出登录 */

@@ -24,9 +24,7 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
         roles: {
           include: {
             role: {
-              include: {
-                menus: { include: { menu: true } }
-              }
+              include: { permissions: true }
             }
           }
         }
@@ -37,8 +35,8 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
 
     const permissions = new Set<string>()
     user.roles.forEach(ur => {
-      ur.role.menus.forEach(rm => {
-        if (rm.menu.permission) permissions.add(rm.menu.permission)
+      ur.role.permissions.forEach(rp => {
+        permissions.add(rp.permission)
       })
     })
 
@@ -46,7 +44,6 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
     req.permissions = Array.from(permissions)
     next()
   } catch (error) {
-    // JWT 过期或无效时，统一返回 401
     if (error instanceof BusinessException) {
       next(error)
     } else {

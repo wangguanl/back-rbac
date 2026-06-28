@@ -20,7 +20,7 @@ router.use(authMiddleware)
  *       200:
  *         description: 成功获取角色列表
  */
-router.get('/', requirePermission('role:list'), controller.list)
+router.get('/', requirePermission('role:list'), controller.list.bind(controller))
 
 /**
  * @openapi
@@ -41,7 +41,7 @@ router.get('/', requirePermission('role:list'), controller.list)
  *       200:
  *         description: 成功获取角色详情
  */
-router.get('/:id', requirePermission('role:query'), controller.findById)
+router.get('/:id', requirePermission('role:query'), controller.findById.bind(controller))
 
 /**
  * @openapi
@@ -73,7 +73,7 @@ router.get('/:id', requirePermission('role:query'), controller.findById)
  *       200:
  *         description: 创建成功
  */
-router.post('/', requirePermission('role:add'), controller.create)
+router.post('/', requirePermission('role:add'), controller.create.bind(controller))
 
 /**
  * @openapi
@@ -109,7 +109,7 @@ router.post('/', requirePermission('role:add'), controller.create)
  *       200:
  *         description: 编辑成功
  */
-router.put('/:id', requirePermission('role:edit'), controller.update)
+router.put('/:id', requirePermission('role:edit'), controller.update.bind(controller))
 
 /**
  * @openapi
@@ -130,13 +130,13 @@ router.put('/:id', requirePermission('role:edit'), controller.update)
  *       200:
  *         description: 删除成功
  */
-router.delete('/:id', requirePermission('role:delete'), controller.delete)
+router.delete('/:id', requirePermission('role:delete'), controller.delete.bind(controller))
 
 /**
  * @openapi
- * /roles/{id}/menus:
+ * /roles/{id}/permissions:
  *   get:
- *     summary: 获取角色菜单
+ *     summary: 获取角色权限
  *     tags: [角色管理]
  *     security:
  *       - bearerAuth: []
@@ -149,13 +149,13 @@ router.delete('/:id', requirePermission('role:delete'), controller.delete)
  *         description: 角色ID
  *     responses:
  *       200:
- *         description: 成功获取角色菜单ID列表
+ *         description: 成功获取角色权限分组
  */
-router.get('/:id/menus', requirePermission('role:query'), controller.getMenus)
+router.get('/:id/permissions', requirePermission('role:query'), controller.getPermissions.bind(controller))
 
 /**
  * @openapi
- * /roles/{id}/menus:
+ * /roles/{id}/permissions:
  *   post:
  *     summary: 分配角色权限
  *     tags: [角色管理]
@@ -173,17 +173,23 @@ router.get('/:id/menus', requirePermission('role:query'), controller.getMenus)
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               menuIds:
- *                 type: array
- *                 items:
- *                   type: number
- *                 description: 菜单ID列表
+ *             type: array
+ *             items:
+ *               type: object
+ *               required: [name, permissions]
+ *               properties:
+ *                 name:
+ *                   type: string
+ *                   description: 页面路由 name，如 User
+ *                 permissions:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   description: 动作短名列表，如 list、add
  *     responses:
  *       200:
  *         description: 权限分配成功
  */
-router.post('/:id/menus', requirePermission('role:assign'), controller.assignMenus)
+router.post('/:id/permissions', requirePermission('role:assign'), controller.assignPermissions.bind(controller))
 
 export default router

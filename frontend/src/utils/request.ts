@@ -1,7 +1,6 @@
 import axios from 'axios'
 import { ElMessage } from 'element-plus'
-import { getToken, removeToken } from './auth'
-import router from '@/router'
+import { getToken } from './auth'
 import type { ApiResponse } from '@/types/api'
 
 const service = axios.create({
@@ -23,8 +22,7 @@ service.interceptors.response.use(
     if (res.code !== 200) {
       ElMessage.error(res.message)
       if (res.code === 401) {
-        removeToken()
-        router.push('/login')
+        import('@/utils/clear-session').then(({ clearSession }) => clearSession())
       }
       return Promise.reject(new Error(res.message))
     }
@@ -36,8 +34,7 @@ service.interceptors.response.use(
     ElMessage.error(msg)
     // 如果后端返回 401，清除 token 并跳转登录
     if (error.response?.status === 401 || error.response?.data?.code === 401) {
-      removeToken()
-      router.push('/login')
+      import('@/utils/clear-session').then(({ clearSession }) => clearSession())
     }
     return Promise.reject(error)
   }

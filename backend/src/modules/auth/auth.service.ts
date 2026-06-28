@@ -2,6 +2,7 @@ import { prisma } from '@/prisma/prisma.service'
 import { generateToken, generateRefreshToken } from '@/utils/jwt'
 import { comparePassword } from '@/utils/password'
 import { UnauthorizedException } from '@/common/exception'
+import { groupPermissions } from '@/common/permissions'
 import redis from '@/utils/redis'
 
 export class AuthService {
@@ -25,7 +26,6 @@ export class AuthService {
     const token = generateToken({ userId: Number(user.id), username: user.username, roles })
     const refreshToken = generateRefreshToken({ userId: Number(user.id), username: user.username, roles })
 
-    // 缓存 token 到 Redis (用于登出)
     await redis.set(`token:${user.id}`, token, 'EX', 7200)
 
     await this.recordLoginLog(user.id, username, ip, 1, '登录成功')
@@ -55,7 +55,7 @@ export class AuthService {
         roles: {
           include: {
             role: {
-              include: { menus: { include: { menu: true } } }
+              include: { permissions: true }
             }
           }
         }
@@ -65,11 +65,9 @@ export class AuthService {
     if (!user) throw new UnauthorizedException('用户不存在')
 
     const roles = user.roles.map(ur => ur.role.code)
-    const permissions = new Set<string>()
+    const flat = new Set<string>()
     user.roles.forEach(ur => {
-      ur.role.menus.forEach(rm => {
-        if (rm.menu.permission) permissions.add(rm.menu.permission)
-      })
+      ur.role.permissions.forEach(rp => flat.add(rp.permission))
     })
 
     return {
@@ -80,7 +78,7 @@ export class AuthService {
       email: user.email,
       phone: user.phone,
       roles,
-      permissions: Array.from(permissions)
+      permissionGroups: groupPermissions(Array.from(flat))
     }
   }
 

@@ -11,7 +11,7 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "seed": "ts-node-dev -r tsconfig-paths/register src/seed/seed.ts",
-    "docs:generate": "npx swagger-jsdoc -d swagger.config.cjs -o docs/swagger.json ./src/modules/auth/*.ts ./src/modules/user/*.ts ./src/modules/role/*.ts ./src/modules/menu/*.ts",
+    "docs:generate": "npx swagger-jsdoc -d swagger.config.cjs -o docs/swagger.json ./src/modules/auth/*.ts ./src/modules/user/*.ts ./src/modules/role/*.ts",
     "docs:build": "npx @redocly/cli build-docs docs/swagger.json --output docs/index.html",
     "docs:preview": "npx @redocly/cli preview --product redoc --project-dir docs --port 3001"
   },

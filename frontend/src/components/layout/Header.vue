@@ -30,16 +30,16 @@
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { ElMessageBox } from 'element-plus'
+import { useRoute } from 'vue-router'
 import { Fold, Expand, ArrowDown } from '@element-plus/icons-vue'
 import { useAppStore } from '@/stores/app'
 import { useUserStore } from '@/stores/user'
+import { useAuth } from '@/composables/useAuth'
 
 const route = useRoute()
-const router = useRouter()
 const appStore = useAppStore()
 const userStore = useUserStore()
+const { logout } = useAuth()
 
 const breadcrumbs = computed(() => {
   const matched = route.matched.filter(item => item.meta?.title)
@@ -50,15 +50,7 @@ const breadcrumbs = computed(() => {
 })
 
 async function handleCommand(command: string) {
-  if (command === 'logout') {
-    await ElMessageBox.confirm('确定要退出登录吗？', '提示', {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning'
-    })
-    userStore.resetState()
-    router.push('/login')
-  }
+  if (command === 'logout') await logout()
 }
 </script>
 

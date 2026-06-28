@@ -28,8 +28,7 @@ const options = {
   apis: [
     './src/modules/auth/*.ts',
     './src/modules/user/*.ts',
-    './src/modules/role/*.ts',
-    './src/modules/menu/*.ts'
+    './src/modules/role/*.ts'
   ]
 };
 

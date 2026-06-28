@@ -52,7 +52,7 @@ async function handleLogin() {
   try {
     await userStore.login(form)
     await userStore.getUserInfo()
-    const routes = await permissionStore.loadRoutes()
+    const routes = await permissionStore.loadRoutes(userStore.permissionGroups)
     routes.forEach(r => router.addRoute(r))
     const redirect = (route.query.redirect as string) || '/dashboard'
     router.push(redirect)

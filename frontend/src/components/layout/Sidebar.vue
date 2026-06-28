@@ -13,26 +13,24 @@
       <img src="/favicon.svg" alt="logo" />
       <span v-show="!appStore.sidebarCollapsed" class="logo-title">RBAC 管理系统</span>
     </div>
-    <template v-for="menu in permissionStore.menuList" :key="menu.id">
-      <!-- 有可见子菜单的目录 -->
-      <el-sub-menu v-if="menu.children?.some(c => c.type === 1)" :index="menu.path || ''">
+    <template v-for="menu in permissionStore.menuList" :key="menu.path">
+      <el-sub-menu v-if="menu.children?.length" :index="menu.path">
         <template #title>
           <el-icon v-if="menu.icon"><component :is="menu.icon" /></el-icon>
-          <span>{{ menu.title || menu.name }}</span>
+          <span>{{ menu.title }}</span>
         </template>
         <el-menu-item
-          v-for="child in menu.children.filter(c => c.type === 1)"
-          :key="child.id"
-          :index="(menu.path || '') + '/' + child.path"
+          v-for="child in menu.children"
+          :key="child.path"
+          :index="child.path"
         >
           <el-icon v-if="child.icon"><component :is="child.icon" /></el-icon>
-          <span>{{ child.title || child.name }}</span>
+          <span>{{ child.title }}</span>
         </el-menu-item>
       </el-sub-menu>
-      <!-- 无子菜单的菜单项（仅 type=1） -->
-      <el-menu-item v-else-if="menu.type === 1" :index="menu.path || ''">
+      <el-menu-item v-else :index="menu.path">
         <el-icon v-if="menu.icon"><component :is="menu.icon" /></el-icon>
-        <span>{{ menu.title || menu.name }}</span>
+        <span>{{ menu.title }}</span>
       </el-menu-item>
     </template>
   </el-menu>

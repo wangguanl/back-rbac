@@ -1,6 +1,7 @@
 import { Request, Response } from 'express'
 import { roleService } from './role.service'
 import { Result } from '@/common/response'
+import { BadRequestException } from '@/common/exception'
 
 export class RoleController {
   async list(req: Request, res: Response) {
@@ -28,14 +29,17 @@ export class RoleController {
     res.json(Result.success(data, '删除成功'))
   }
 
-  async getMenus(req: Request, res: Response) {
-    const data = await roleService.getMenus(Number(req.params.id))
+  async getPermissions(req: Request, res: Response) {
+    const data = await roleService.getPermissions(Number(req.params.id))
     res.json(Result.success(data))
   }
 
-  async assignMenus(req: Request, res: Response) {
-    const { menuIds } = req.body
-    const data = await roleService.assignMenus(Number(req.params.id), menuIds)
+  async assignPermissions(req: Request, res: Response) {
+    const groups = req.body
+    if (!Array.isArray(groups)) {
+      throw new BadRequestException('请求体必须为 RoutePermissionGroup[]')
+    }
+    const data = await roleService.assignPermissions(Number(req.params.id), groups)
     res.json(Result.success(data, '权限分配成功'))
   }
 }

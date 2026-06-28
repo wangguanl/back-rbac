@@ -18,8 +18,8 @@
       </el-form>
 
       <div class="toolbar">
-        <el-button type="primary" v-auth="'user:add'" @click="handleAdd">新增用户</el-button>
-        <el-button type="danger" v-auth="'user:delete'" :disabled="!selectedIds.length" @click="handleBatchDelete">
+        <el-button type="primary" v-auth="P.System.User.Add" @click="handleAdd">新增用户</el-button>
+        <el-button type="danger" v-auth="P.System.User.Delete" :disabled="!selectedIds.length" @click="handleBatchDelete">
           批量删除
         </el-button>
       </div>
@@ -44,10 +44,10 @@
         </el-table-column>
         <el-table-column label="操作" width="300" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" v-auth="'user:edit'" @click="handleEdit(row)">编辑</el-button>
-            <el-button link type="primary" v-auth="'user:assign'" @click="handleAssignRole(row)">分配角色</el-button>
-            <el-button link type="warning" v-auth="'user:resetPwd'" @click="handleResetPassword(row)">重置密码</el-button>
-            <el-button link type="danger" v-auth="'user:delete'" @click="handleDelete(row)">删除</el-button>
+            <el-button link type="primary" v-auth="P.System.User.Edit" @click="handleEdit(row)">编辑</el-button>
+            <el-button link type="primary" v-auth="P.System.User.Assign" @click="handleAssignRole(row)">分配角色</el-button>
+            <el-button link type="warning" v-auth="P.System.User.ResetPwd" @click="handleResetPassword(row)">重置密码</el-button>
+            <el-button link type="danger" v-auth="P.System.User.Delete" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -74,6 +74,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { P } from '@/router/routes/asyncRoutes'
 import { getUserListApi, deleteUserApi, updateUserApi } from '@/api/user'
 import UserForm from './components/UserForm.vue'
 import AssignRoleDialog from './components/AssignRoleDialog.vue'

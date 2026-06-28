@@ -15,7 +15,7 @@
       </el-form>
 
       <div class="toolbar">
-        <el-button type="primary" v-auth="'role:add'" @click="handleAdd">新增角色</el-button>
+        <el-button type="primary" v-auth="P.System.Role.Add" @click="handleAdd">新增角色</el-button>
       </div>
 
       <el-table :data="tableData" v-loading="loading">
@@ -31,9 +31,9 @@
         </el-table-column>
         <el-table-column label="操作" width="250" fixed="right">
           <template #default="{ row }">
-            <el-button link type="primary" v-auth="'role:edit'" @click="handleEdit(row)">编辑</el-button>
-            <el-button link type="primary" v-auth="'role:assign'" @click="handleAssignPermission(row)">分配权限</el-button>
-            <el-button link type="danger" v-auth="'role:delete'" @click="handleDelete(row)">删除</el-button>
+            <el-button link type="primary" v-auth="P.System.Role.Edit" @click="handleEdit(row)">编辑</el-button>
+            <el-button link type="primary" v-auth="P.System.Role.Assign" @click="handleAssignPermission(row)">分配权限</el-button>
+            <el-button link type="danger" v-auth="P.System.Role.Delete" @click="handleDelete(row)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -59,6 +59,7 @@
 <script setup lang="ts">
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { P } from '@/router/routes/asyncRoutes'
 import { getRoleListApi, deleteRoleApi } from '@/api/role'
 import RoleForm from './components/RoleForm.vue'
 import PermissionTree from './components/PermissionTree.vue'

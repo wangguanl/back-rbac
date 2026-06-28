@@ -212,7 +212,7 @@ model Menu {
   componentName  String?  @db.VarChar(100) @map("component_name")
   redirect       String?  @db.VarChar(200)
   sort           Int      @default(0)
-  type           Int
+  type           Int     @default(0) // 0:目录 1:菜单 2:按钮
   title          String?  @db.VarChar(50)
   breadcrumb     Int      @default(1)
   hidden         Int      @default(0)
@@ -609,14 +609,14 @@ pnpm prisma:generate
 
 ## 本阶段交付物
 
-- [ ] Express + TypeScript 项目框架
-- [ ] Prisma 数据模型（7张表）
-- [ ] 配置文件（数据库、JWT、Redis）
-- [ ] 工具函数（JWT、密码）
-- [ ] 统一响应格式
-- [ ] 统一异常处理
-- [ ] 健康检查接口
-- [ ] 数据库迁移完成
+- [x] Express + TypeScript 项目框架
+- [x] Prisma 数据模型（7张表）
+- [x] 配置文件（数据库、JWT、Redis）
+- [x] 工具函数（JWT、密码）
+- [x] 统一响应格式
+- [x] 统一异常处理
+- [x] 健康检查接口
+- [x] 数据库迁移完成
 
 ---
 

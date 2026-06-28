@@ -586,4 +586,4 @@ for (const rm of roleMenus) {
 
 **文档版本**：v1.2  
 **变更**：组内 permissions 改为 action 短名；flatten 为 `user:list` 写入 DB / 校验 API  
-**状态**：待确认后执行
+**状态**：✅ 已执行

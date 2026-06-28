@@ -15,7 +15,18 @@
 | 数据库 | **PostgreSQL** |
 | Redis | **启用** |
 | 包管理器 | **pnpm 10.x** |
-| 上次更新 | 2026-06-28 |
+| 上次更新 | 2026-06-29 |
+
+---
+
+## 重要变更记录
+
+| 日期 | 变更 | 说明 |
+|------|------|------|
+| 2026-06-28 | asyncRoutes 改造 | 前端以 `asyncRoutes.ts` 为权限唯一真相源，移除菜单管理模块，角色权限改用 `RoutePermissionGroup[]` 格式 |
+| 2026-06-28 | 后端 RolePermission 改造 | 后端新增 `sys_role_permission` 表，废弃 `sys_menu`/`sys_role_menu`，API 传输统一为 `RoutePermissionGroup[]` |
+
+---
 
 ---
 
@@ -30,6 +41,7 @@
 | 后端-Phase 2 | 认证模块 | 1天 | ✅ 已完成 | 2026-06-27 |
 | 后端-Phase 3 | 权限核心 | 2天 | ✅ 已完成 | 2026-06-27 |
 | 后端-Phase 4 | 测试验收 | 0.5天 | ✅ 已完成 | 2026-06-27 |
+| 🔄 改造 | RolePermission 重构 | 1天 | ✅ 已完成 | 2026-06-28 |
 
 ### 前端阶段（后端完成后开始）
 
@@ -40,6 +52,7 @@
 | 前端-Phase 3 | 权限核心 | 1天 | ✅ 已完成 | 2026-06-27 |
 | 前端-Phase 4 | 功能模块 | 2天 | ✅ 已完成 | 2026-06-27 |
 | 前端-Phase 5 | 联调测试 | 0.5天 | ✅ 已完成 | 2026-06-28 |
+| 前端-Phase 6 | asyncRoutes 改造 | 1天 | ✅ 已完成 | 2026-06-28 |
 
 ---
 
@@ -60,6 +73,10 @@
 | docs/前端-Phase 4 - 功能模块.md | 2026-06-27 | 前端功能模块 |
 | docs/前端-Phase 5 - 联调测试.md | 2026-06-27 | 前端联调测试 |
 | docs/Phase Final - 项目交付.md | 2026-06-27 | 项目交付总结 |
+| docs/改造方案-前端-asyncRoutes落地方案.md | 2026-06-28 | 前端 asyncRoutes 改造方案 |
+| docs/改造方案-后端-RolePermission落地方案.md | 2026-06-28 | 后端 RolePermission 改造方案（✅ 已执行） |
+| docs/质量缺口.md | 2026-06-28 | 实现质量缺口分析 |
+| docs/质量缺口-解决方案.md | 2026-06-28 | 质量缺口解决方案 |
 | docs/progress.md | 2026-06-27 | 进度追踪文件 |
 
 ---
@@ -83,6 +100,10 @@ Phase 0 (环境准备)
                                                     │
                                                     ▼
 前端-Phase 1 → 前端-Phase 2 → 前端-Phase 3 → 前端-Phase 4 → 前端-Phase 5
+                                                                        │
+                                                    ┌───────────────────┘
+                                                    ▼
+                                    前端-Phase 6 (asyncRoutes 改造) ── 并行 ── 后端 RolePermission 改造
                                                                         │
                                                                         ▼
                                                             Phase Final (项目交付)

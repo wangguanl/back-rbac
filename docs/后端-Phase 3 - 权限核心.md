@@ -5,6 +5,8 @@
 > 预计耗时：2天
 > 前置依赖：后端-Phase 2 - 认证模块
 > 下一阶段：后端-Phase 4 - 测试验收
+>
+> **⚠️ 2026-06-28 架构变更**：权限模型已从 Menu 驱动改为 RolePermission 驱动，详见 [改造方案-后端-RolePermission落地方案.md](改造方案-后端-RolePermission落地方案.md)。本文档保留历史记录，实际实现以改造方案为准。
 
 ---
 
@@ -22,13 +24,13 @@
 | 3.2 | 用户角色分配 | PUT /api/users/:id/roles |
 | 3.3 | 用户重置密码 | PUT /api/users/:id/password |
 | 3.4 | 角色CRUD | 列表/详情/新增/编辑/删除 |
-| 3.5 | 角色权限分配 | POST /api/roles/:id/menus |
-| 3.6 | 获取角色菜单 | GET /api/roles/:id/menus |
-| 3.7 | 菜单CRUD | 树/列表/详情/新增/编辑/删除 |
-| 3.8 | 用户路由接口 | GET /api/menus/routes |
+| 3.5 | 角色权限分配 | ~~POST /api/roles/:id/menus~~ → **POST /api/roles/:id/permissions** |
+| 3.6 | 获取角色权限 | ~~GET /api/roles/:id/menus~~ → **GET /api/roles/:id/permissions** |
+| 3.7 | ~~菜单CRUD~~ | ❌ 已移除（RolePermission 重构） |
+| 3.8 | ~~用户路由接口~~ | ❌ 已移除（前端 asyncRoutes 驱动） |
 | 3.9 | 权限中间件 | requirePermission中间件 |
 | 3.10 | 操作日志 | 记录关键操作到sys_log |
-| 3.11 | 菜单初始化数据 | 创建系统管理菜单 |
+| 3.11 | ~~菜单初始化数据~~ | ❌ 已移除（seed 改用 RolePermission） |
 
 ---
 
@@ -55,20 +57,10 @@
 | POST / | role:add |
 | PUT /:id | role:edit |
 | DELETE /:id | role:delete |
-| GET /:id/menus | role:query |
-| POST /:id/menus | role:assign |
+| GET /:id/permissions | role:query |
+| POST /:id/permissions | role:assign |
 
-### 菜单模块 /api/menus
-
-| 接口 | 方法 | 权限 |
-|------|------|------|
-| GET /tree | menu:list |
-| GET / | menu:list |
-| GET /:id | menu:query |
-| POST / | menu:add |
-| PUT /:id | menu:edit |
-| DELETE /:id | menu:delete |
-| GET /routes | 无需权限 |
+> ⚠️ 菜单模块 `/api/menus/*` 已移除（2026-06-28 RolePermission 重构），权限分配改为 `RoutePermissionGroup[]` 格式。
 
 ---
 
@@ -76,6 +68,8 @@
 
 ```
 backend/src/
+├── common/
+│   └── permissions.ts           # RoutePermissionGroup + ROUTE_ACTION_REGISTRY
 ├── modules/
 │   ├── user/
 │   │   ├── user.controller.ts
@@ -85,16 +79,13 @@ backend/src/
 │   │   ├── role.controller.ts
 │   │   ├── role.service.ts
 │   │   └── role.route.ts
-│   ├── menu/
-│   │   ├── menu.controller.ts
-│   │   ├── menu.service.ts
-│   │   └── menu.route.ts
 │   └── log/
 │       └── log.service.ts
 ├── middleware/
+│   ├── auth.middleware.ts        # 从 RolePermission 聚合权限
 │   └── permission.middleware.ts
 └── seed/
-    └── seed.ts（补充菜单初始化）
+    └── seed.ts                   # 从 ALL_PERMISSIONS 创建权限
 ```
 
 ---
@@ -152,16 +143,19 @@ buildMenuTree(menus: Menu[]) {
 }
 ```
 
-### 角色权限分配（事务）
+### 角色权限分配（事务 + RoutePermissionGroup）
 
 ```typescript
 // role.service.ts
-async assignMenus(roleId: number, menuIds: number[]) {
+async assignPermissions(roleId: number, groups: RoutePermissionGroup[]) {
+  const normalized = validatePermissionGroups(groups)
+  const flat = flattenPermissionGroups(normalized)
+
   return prisma.$transaction(async (tx) => {
-    await tx.roleMenu.deleteMany({ where: { roleId } })
-    if (menuIds.length > 0) {
-      await tx.roleMenu.createMany({
-        data: menuIds.map(menuId => ({ roleId, menuId }))
+    await tx.rolePermission.deleteMany({ where: { roleId: BigInt(roleId) } })
+    if (flat.length > 0) {
+      await tx.rolePermission.createMany({
+        data: flat.map(permission => ({ roleId: BigInt(roleId), permission }))
       })
     }
     return { message: '权限分配成功' }
@@ -169,28 +163,37 @@ async assignMenus(roleId: number, menuIds: number[]) {
 }
 ```
 
+> ⚠️ 旧版 `assignMenus`（基于 menuIds）已移除，权限现在以 `RoutePermissionGroup[]` 格式传入（如 `[{ name: 'User', permissions: ['list', 'add'] }]`），后端自动转为 `user:list`、`user:add` 存入 `sys_role_permission`。详见 [common/permissions.ts](../backend/src/common/permissions.ts)。
+
 ---
 
-## 菜单初始化数据
+## 权限初始化数据（RolePermission 重构后）
 
-补充 seed.ts：
+seed.ts 使用 `ALL_PERMISSIONS` 为 admin 角色绑定全部权限：
 
 ```typescript
-// 系统管理目录
-const systemMenu = await prisma.menu.create({
-  data: {
-    parentId: 0, path: '/system', name: 'System',
-    icon: 'Setting', component: 'Layout',
-    sort: 1, type: 1, title: '系统管理'
-  }
+import { ALL_PERMISSIONS } from '@/common/permissions'
+
+// admin 角色绑定全部权限
+await prisma.rolePermission.deleteMany({ where: { roleId: adminRole.id } })
+await prisma.rolePermission.createMany({
+  data: ALL_PERMISSIONS.map(permission => ({
+    roleId: adminRole.id,
+    permission
+  }))
 })
 
-// 用户管理菜单 + 6个按钮权限
-// 角色管理菜单 + 5个按钮权限
-// 菜单管理菜单 + 4个按钮权限
-
-// 给admin角色分配所有菜单
+// user 角色绑定只读权限
+const READONLY_PERMISSIONS = ['user:list', 'user:query', 'role:list', 'role:query']
+await prisma.rolePermission.createMany({
+  data: READONLY_PERMISSIONS.map(permission => ({
+    roleId: userRole.id,
+    permission
+  }))
+})
 ```
+
+> ⚠️ 旧版菜单初始化（Menu 创建 + RoleMenu 分配）已移除。
 
 ---
 
@@ -200,11 +203,10 @@ const systemMenu = await prisma.menu.create({
 // app.ts
 import userRoutes from '@/modules/user/user.route'
 import roleRoutes from '@/modules/role/role.route'
-import menuRoutes from '@/modules/menu/menu.route'
 
 app.use('/api/users', userRoutes)
 app.use('/api/roles', roleRoutes)
-app.use('/api/menus', menuRoutes)
+// ⚠️ menu 模块已移除（RolePermission 重构）
 ```
 
 ---
@@ -215,7 +217,7 @@ app.use('/api/menus', menuRoutes)
 # 1. 启动服务
 pnpm dev
 
-# 2. 初始化菜单数据
+# 2. 初始化权限数据
 pnpm seed
 
 # 3. 测试各接口（使用admin token）
@@ -228,12 +230,8 @@ curl http://localhost:3000/api/users?page=1&size=10 \
 curl http://localhost:3000/api/roles \
   -H "Authorization: Bearer {token}"
 
-# 菜单树
-curl http://localhost:3000/api/menus/tree \
-  -H "Authorization: Bearer {token}"
-
-# 用户路由
-curl http://localhost:3000/api/menus/routes \
+# 角色权限
+curl http://localhost:3000/api/roles/1/permissions \
   -H "Authorization: Bearer {token}"
 ```
 
@@ -241,12 +239,12 @@ curl http://localhost:3000/api/menus/routes \
 
 ## 本阶段交付物
 
-- [ ] 用户模块（7个接口）
-- [ ] 角色模块（7个接口）
-- [ ] 菜单模块（7个接口）
-- [ ] 权限中间件
-- [ ] 菜单初始化数据
-- [ ] 操作日志记录
+- [x] 用户模块（7个接口）
+- [x] 角色模块（7个接口）
+- [x] 菜单模块（7个接口）
+- [x] 权限中间件
+- [x] 菜单初始化数据
+- [x] 操作日志记录
 
 ---
 

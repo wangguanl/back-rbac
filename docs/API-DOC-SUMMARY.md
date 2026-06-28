@@ -44,8 +44,7 @@ const options = {
   apis: [
     './src/modules/auth/*.ts',
     './src/modules/user/*.ts',
-    './src/modules/role/*.ts',
-    './src/modules/menu/*.ts'
+    './src/modules/role/*.ts'
   ],
   failOnErrors: true
 };
@@ -67,7 +66,7 @@ module.exports = spec;
 ```json
 {
   "scripts": {
-    "docs:generate": "npx swagger-jsdoc -d swagger.config.cjs -o docs/swagger.json ./src/modules/auth/*.ts ./src/modules/user/*.ts ./src/modules/role/*.ts ./src/modules/menu/*.ts",
+    "docs:generate": "npx swagger-jsdoc -d swagger.config.cjs -o docs/swagger.json ./src/modules/auth/*.ts ./src/modules/user/*.ts ./src/modules/role/*.ts",
     "docs:build": "npx @redocly/cli build-docs docs/swagger.json --output docs/index.html",
     "docs:preview": "npx @redocly/cli preview --product redoc --project-dir docs --port 3001"
   }
@@ -158,10 +157,19 @@ router.post('/login', controller.login);
  *                       type: array
  *                       items:
  *                         type: string
- *                     permissions:
+ *                     permissionGroups:
  *                       type: array
  *                       items:
- *                         type: string
+ *                         type: object
+ *                         properties:
+ *                           name:
+ *                             type: string
+ *                             description: 页面路由 name，如 User
+ *                           permissions:
+ *                             type: array
+ *                             items:
+ *                               type: string
+ *                             description: 动作短名列表，如 list、add
  *       401:
  *         description: 未授权
  */
@@ -250,7 +258,48 @@ router.post('/', authMiddleware, requirePermission('user:add'), controller.creat
 ```typescript
 /**
  * @openapi
- * /roles/{id}/menus:
+ * /roles/{id}/permissions:
+ *   get:
+ *     summary: 获取角色权限分组
+ *     tags: [角色管理]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: number
+ *         description: 角色ID
+ *     responses:
+ *       200:
+ *         description: 成功获取角色权限分组
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 code:
+ *                   type: number
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       name:
+ *                         type: string
+ *                         description: 页面路由 name，如 User
+ *                       permissions:
+ *                         type: array
+ *                         items:
+ *                           type: string
+ *                         description: 动作短名列表，如 list、add
+ */
+router.get('/:id/permissions', authMiddleware, requirePermission('role:query'), controller.getPermissions);
+
+/**
+ * @openapi
+ * /roles/{id}/permissions:
  *   post:
  *     summary: 分配角色权限
  *     tags: [角色管理]
@@ -268,77 +317,24 @@ router.post('/', authMiddleware, requirePermission('user:add'), controller.creat
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             properties:
- *               menuIds:
- *                 type: array
- *                 items:
- *                   type: number
- *                 description: 菜单ID列表
+ *             type: array
+ *             items:
+ *               type: object
+ *               required: [name, permissions]
+ *               properties:
+ *                 name:
+ *                   type: string
+ *                   description: 页面路由 name，如 User
+ *                 permissions:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   description: 动作短名列表，如 list、add
  *     responses:
  *       200:
  *         description: 权限分配成功
  */
-router.post('/:id/menus', authMiddleware, requirePermission('role:assign'), controller.assignMenus);
-```
-
-### 菜单模块 menu.route.ts
-
-```typescript
-/**
- * @openapi
- * /menus/tree:
- *   get:
- *     summary: 获取菜单树
- *     tags: [菜单管理]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: 成功获取菜单树
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 code:
- *                   type: number
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: number
- *                       parentId:
- *                         type: number
- *                       name:
- *                         type: string
- *                       title:
- *                         type: string
- *                       path:
- *                         type: string
- *                       children:
- *                         type: array
- *                         items:
- *                           type: object
- */
-router.get('/tree', authMiddleware, requirePermission('menu:list'), controller.tree);
-
-/**
- * @openapi
- * /menus/routes:
- *   get:
- *     summary: 获取用户路由菜单
- *     tags: [菜单管理]
- *     security:
- *       - bearerAuth: []
- *     description: 获取当前登录用户可访问的路由菜单（用于前端动态路由）
- *     responses:
- *       200:
- *         description: 成功获取用户路由
- */
-router.get('/routes', authMiddleware, controller.getUserRoutes);
+router.post('/:id/permissions', authMiddleware, requirePermission('role:assign'), controller.assignPermissions);
 ```
 
 ## 5. 使用流程
@@ -368,10 +364,8 @@ backend/
 │       │   └── auth.route.ts  # 认证路由（包含API注释）
 │       ├── user/
 │       │   └ user.route.ts   # 用户路由
-│       ├── role/
-│       │   └ role.route.ts   # 角色路由
-│       └── menu/
-│           └ menu.route.ts    # 菜单路由
+│       └── role/
+│           └ role.route.ts   # 角色路由
 └── package.json
 ```
 
@@ -382,7 +376,6 @@ backend/
 | 认证 | 认证模块 | /api/auth/* |
 | 用户 | 用户管理 | /api/users/* |
 | 角色 | 角色管理 | /api/roles/* |
-| 菜单 | 菜单管理 | /api/menus/* |
 
 ## 8. 优势
 
@@ -398,8 +391,21 @@ backend/
 - TypeScript文件需正确配置扫描路径
 - 需要认证的接口添加 `security: [bearerAuth: []]`
 - 权限控制接口标注所需权限
+- **权限传输格式**：统一使用 `RoutePermissionGroup[]`（`{ name, permissions[] }`），前端 `flattenPermissionGroups()` 转为扁平 `user:list` 供 v-auth 使用
 
-## 10. 集成到Express应用
+## 10. 已废弃接口
+
+> 以下接口已移除，不再可用：
+
+| 接口 | 说明 |
+|------|------|
+| `GET /api/menus/tree` | 菜单树（已由前端 asyncRoutes 替代） |
+| `GET /api/menus/routes` | 用户菜单路由（已由前端 filterRoutes 替代） |
+| `GET/POST/PUT/DELETE /api/menus/*` | 菜单 CRUD（菜单管理模块已移除） |
+| `GET /api/roles/:id/menus` | 角色菜单（由 permissions 替代） |
+| `POST /api/roles/:id/menus` | 分配角色菜单（由 permissions 替代） |
+
+## 11. 集成到Express应用
 
 ```typescript
 // src/app.ts

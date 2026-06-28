@@ -5,12 +5,16 @@
 > 预计耗时：2天
 > 前置依赖：前端-Phase 3 - 权限核心
 > 下一阶段：前端-Phase 5 - 联调测试
+>
+> **⚠️ 2026-06-28 架构变更**：菜单管理模块已移除（asyncRoutes 重构），详见 [改造方案-前端-asyncRoutes落地方案.md](改造方案-前端-asyncRoutes落地方案.md)。本文档保留历史记录，实际实现以改造方案为准。
 
 ---
 
 ## 目标
 
-实现用户管理、角色管理、菜单管理的完整前端页面，对接后端API。
+实现用户管理、角色管理的完整前端页面，对接后端API。
+
+> **架构变更（2026-06-28）**：菜单管理模块已移除。权限分配改为基于前端 asyncRoutes 权限树，角色权限使用 `RoutePermissionGroup[]` 格式传输。
 
 ---
 
@@ -25,10 +29,8 @@
 | 4.5 | 用户删除 | 单删/批量删除 |
 | 4.6 | 角色列表页面 | 表格展示、搜索 |
 | 4.7 | 角色表单弹窗 | 新增/编辑角色 |
-| 4.8 | 权限分配弹窗 | 菜单树选择 |
-| 4.9 | 菜单列表页面 | 树形表格展示 |
-| 4.10 | 菜单表单弹窗 | 新增/编辑菜单 |
-| 4.11 | 按钮权限控制 | v-auth指令应用 |
+| 4.8 | 权限分配弹窗 | 基于 asyncRoutes 权限树选择 |
+| 4.9 | 按钮权限控制 | v-auth指令应用 |
 
 ---
 
@@ -42,16 +44,14 @@ frontend/src/views/system/
 │       ├── UserForm.vue
 │       ├── AssignRoleDialog.vue
 │       └── ResetPasswordDialog.vue
-├── role/
-│   ├── index.vue
-│   └── components/
-│       ├── RoleForm.vue
-│       ├── PermissionTree.vue
-└── menu/
-│   ├── index.vue
-│   └── components/
-│       └── MenuForm.vue
+└── role/
+    ├── index.vue
+    └── components/
+        ├── RoleForm.vue
+        └── PermissionTree.vue
 ```
+
+> **注意**：`views/system/menu/` 目录已删除，菜单管理功能不再需要。
 
 ---
 
@@ -73,14 +73,7 @@ frontend/src/views/system/
 - 新增角色（表单弹窗）
 - 编辑角色（表单回显）
 - 删除角色（确认删除）
-- 分配权限（菜单树选择弹窗）
-
-### 菜单管理页面
-
-- 菜单列表（树形表格）
-- 新增目录/菜单/按钮
-- 编辑菜单
-- 删除菜单（有子级不可删）
+- 分配权限（基于 asyncRoutes 的权限树弹窗，使用 `RoutePermissionGroup[]` 提交）
 
 ---
 
@@ -142,8 +135,9 @@ const loading = ref(false)
 
 async function fetchData() {
   loading.value = true
-  const res = await getUserListApi({ page: 1, size: 10 })
-  tableData.value = res.data.list
+  const res = await getUserListApi({ page: 1, pageSize: 10 })
+  tableData.value = res.data || []
+  pagination.total = res.pagination?.total || 0
   loading.value = false
 }
 
@@ -175,13 +169,9 @@ onMounted(() => fetchData())
 # 3. 测试角色管理
 # - 角色列表
 # - 新增/编辑角色
-# - 权限分配
+# - 权限分配（asyncRoutes 权限树）
 
-# 4. 测试菜单管理
-# - 菜单树展示
-# - 新增/编辑/删除菜单
-
-# 5. 测试权限控制
+# 4. 测试权限控制
 # - 无权限按钮不显示
 # - 不同角色看到不同菜单
 ```
@@ -192,9 +182,9 @@ onMounted(() => fetchData())
 
 - [x] 用户管理页面完整
 - [x] 角色管理页面完整
-- [x] 菜单管理页面完整
 - [x] 所有API对接完成
 - [x] 按钮权限控制正确
+- [x] 权限分配基于 asyncRoutes 权限树
 
 ---
 

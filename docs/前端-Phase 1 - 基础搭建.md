@@ -176,9 +176,8 @@ VITE_API_BASE_URL = '/api'
 ```typescript
 // utils/request.ts
 import axios from 'axios'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { getToken, removeToken } from './auth'
-import router from '@/router'
+import { ElMessage } from 'element-plus'
+import { getToken } from './auth'
 
 const service = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
@@ -199,19 +198,18 @@ service.interceptors.response.use(
     if (res.code !== 200) {
       ElMessage.error(res.message)
       if (res.code === 401) {
-        ElMessageBox.confirm('登录已过期', '提示', {
-          confirmButtonText: '重新登录'
-        }).then(() => {
-          removeToken()
-          router.push('/login')
-        })
+        import('@/utils/clear-session').then(({ clearSession }) => clearSession())
       }
       return Promise.reject(new Error(res.message))
     }
     return res
   },
   error => {
-    ElMessage.error(error.message)
+    const msg = error.response?.data?.message || error.message
+    ElMessage.error(msg)
+    if (error.response?.status === 401 || error.response?.data?.code === 401) {
+      import('@/utils/clear-session').then(({ clearSession }) => clearSession())
+    }
     return Promise.reject(error)
   }
 )
@@ -224,36 +222,41 @@ export default service
 ```typescript
 // stores/user.ts
 import { defineStore } from 'pinia'
+import { ref, computed } from 'vue'
 import { loginApi, getUserInfoApi } from '@/api/auth'
 import { setToken, removeToken } from '@/utils/auth'
+import { flattenPermissionGroups } from '@/router/routes/utils/permissionGroups'
 
 export const useUserStore = defineStore('user', () => {
   const token = ref('')
-  const userInfo = ref(null)
-  const permissions = ref<string[]>([])
+  const userInfo = ref<UserInfo | null>(null)
+  const permissionGroups = ref<RoutePermissionGroup[]>([])
+
+  // 供 v-auth / composables 使用的扁平权限数组
+  const permissions = computed(() => flattenPermissionGroups(permissionGroups.value))
 
   async function login(params) {
     const res = await loginApi(params)
     token.value = res.data.token
-    setToken(res.data.token)
+    setToken(res.data.token)          // 同步写入 rbac_token（双写兼容）
     return res.data
   }
 
   async function getUserInfo() {
     const res = await getUserInfoApi()
     userInfo.value = res.data
-    permissions.value = res.data.permissions
+    permissionGroups.value = res.data.permissionGroups || []
     return res.data
   }
 
   function resetState() {
     token.value = ''
     userInfo.value = null
-    permissions.value = []
+    permissionGroups.value = []
     removeToken()
   }
 
-  return { token, userInfo, permissions, login, getUserInfo, resetState }
+  return { token, userInfo, permissionGroups, permissions, login, getUserInfo, resetState }
 }, { persist: { key: 'user', pick: ['token'] } })
 ```
 

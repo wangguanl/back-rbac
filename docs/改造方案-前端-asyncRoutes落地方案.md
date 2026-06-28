@@ -704,4 +704,4 @@ export function assignRolePermissionsApi(id: number, groups: RoutePermissionGrou
 
 **文档版本**：v1.2  
 **变更**：组内 permissions 改为短 action；补充 2.5 页面/按钮/API 关系说明；flatten 规则 `User`+`list`→`user:list`  
-**状态**：待确认后执行
+**状态**：✅ 已执行

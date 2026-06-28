@@ -71,14 +71,10 @@ frontend/src/
 
 <script setup>
 import { ref, reactive } from 'vue'
-import { useRouter } from 'vue-router'
 import { User, Lock } from '@element-plus/icons-vue'
-import { useUserStore } from '@/stores/user'
-import { usePermissionStore } from '@/stores/permission'
+import { useAuth } from '@/composables/useAuth'
 
-const router = useRouter()
-const userStore = useUserStore()
-const permissionStore = usePermissionStore()
+const { login } = useAuth()
 const loading = ref(false)
 
 const form = reactive({ username: 'admin', password: '123456' })
@@ -90,11 +86,7 @@ const rules = {
 async function handleLogin() {
   loading.value = true
   try {
-    await userStore.login(form)
-    await userStore.getUserInfo()
-    const routes = await permissionStore.loadRoutes()
-    routes.forEach(r => router.addRoute(r))
-    router.push('/dashboard')
+    await login(form)  // useAuth().login() 内聚了 store 操作 + 动态路由加载
   } finally {
     loading.value = false
   }
@@ -112,7 +104,7 @@ import { usePermissionStore } from '@/stores/permission'
 
 const whiteList = ['/login', '/403', '/404']
 
-router.beforeEach(async (to, from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const userStore = useUserStore()
   const permissionStore = usePermissionStore()
 
@@ -120,11 +112,20 @@ router.beforeEach(async (to, from, next) => {
     if (to.path === '/login') {
       next('/dashboard')
     } else if (!userStore.userInfo) {
-      await userStore.getUserInfo()
-      const routes = await permissionStore.loadRoutes()
-      routes.forEach(r => router.addRoute(r))
-      next({ ...to, replace: true })
+      // 刷新页面后重新拉取用户信息 + 动态路由
+      try {
+        await userStore.getUserInfo()
+        const routes = await permissionStore.loadRoutes(userStore.permissionGroups)
+        routes.forEach(r => router.addRoute(r))
+        next({ path: to.fullPath, replace: true })
+      } catch {
+        // 获用户信息失败 → 清除状态，跳转登录
+        permissionStore.resetRoutes()
+        userStore.resetState()
+        next(`/login?redirect=${to.path}`)
+      }
     } else {
+      // 路由级权限校验
       next()
     }
   } else {
@@ -133,37 +134,56 @@ router.beforeEach(async (to, from, next) => {
 })
 ```
 
-### 动态路由生成
+### 动态路由（前端驱动）
 
 ```typescript
 // stores/permission.ts
+import { defineStore } from 'pinia'
+import { markRaw, ref, shallowRef } from 'vue'
+import type { RouteRecordRaw } from 'vue-router'
+import Layout from '@/components/layout/Layout.vue'
+import router from '@/router'
+import { asyncRoutes } from '@/router/routes/asyncRoutes'
+import { filterRoutes } from '@/router/routes/utils/filterRoutes'
+import { flattenPermissionGroups } from '@/router/routes/utils/permissionGroups'
+import { routesToMenuList } from '@/router/routes/utils/routesToMenuList'
+
+const dashboardRoute: RouteRecordRaw = {
+  path: '/dashboard',
+  name: 'Dashboard',
+  component: markRaw(Layout),
+  redirect: '/dashboard/index',
+  children: [{
+    path: 'index',
+    component: markRaw(() => import('@/views/dashboard/index.vue')),
+    meta: { title: '仪表盘' }
+  }]
+}
+
 export const usePermissionStore = defineStore('permission', () => {
-  const routes = ref<RouteRecordRaw[]>([])
-  const menuList = ref<Menu[]>([])
+  const routes = shallowRef<RouteRecordRaw[]>([])
+  const menuList = ref<SidebarMenuItem[]>([])
+  const addedRouteNames = ref<string[]>([])
 
-  async function loadRoutes() {
-    const res = await getUserRoutesApi()
-    menuList.value = res.data
-
-    const dynamicRoutes = generateRoutes(res.data)
-
-    // 添加仪表盘路由
-    const dashboardRoute = {
-      path: '/dashboard',
-      component: Layout,
-      children: [{ path: 'index', component: () => import('@/views/dashboard/index.vue'), meta: { title: '仪表盘' } }]
-    }
-
-    routes.value = [dashboardRoute, ...dynamicRoutes]
+  async function loadRoutes(permissionGroups: RoutePermissionGroup[]) {
+    const flatPermissions = flattenPermissionGroups(permissionGroups)
+    const accessed = filterRoutes(asyncRoutes, flatPermissions)
+    routes.value = [dashboardRoute, ...accessed]
+    menuList.value = [dashboardMenuItem, ...routesToMenuList(accessed)]
+    addedRouteNames.value = collectTopLevelRouteNames(routes.value)
     return routes.value
   }
 
-  function generateRoutes(menus) {
-    // 将菜单数据转换为路由配置
-    // ...
+  function resetRoutes() {
+    addedRouteNames.value.forEach(name => {
+      if (router.hasRoute(name)) router.removeRoute(name)
+    })
+    addedRouteNames.value = []
+    routes.value = []
+    menuList.value = []
   }
 
-  return { routes, menuList, loadRoutes }
+  return { routes, menuList, addedRouteNames, loadRoutes, resetRoutes }
 })
 ```
 

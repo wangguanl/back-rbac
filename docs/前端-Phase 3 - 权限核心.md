@@ -12,6 +12,8 @@
 
 实现权限指令、权限Hook、页面级和按钮级权限控制。
 
+> **架构说明（2026-06-28）**：权限核心已升级为前端驱动模式。`routePermissionRegistry.ts` 作为唯一真相源定义所有路由和权限，自动生成 `asyncRoutes`、`P`（v-auth 权限常量）和 `Bind`（按钮↔API 绑定）。后端返回 `RoutePermissionGroup[]` 格式，前端通过 `flattenPermissionGroups()` 转为扁平 `user:list` 供 v-auth 使用。
+
 ---
 
 ## 任务清单
@@ -24,6 +26,8 @@
 | 3.4 | useAuth Hook | 登录登出方法封装 |
 | 3.5 | 页面级权限 | 路由meta权限验证 |
 | 3.6 | 按钮级权限 | 指令+函数两种方式 |
+| 3.7 | asyncRoutes 动态路由 | 注册表驱动路由+filterRoutes过滤 |
+| 3.8 | permissionGroups 转换 | 分组↔扁平转换工具函数 |
 
 ---
 
@@ -38,6 +42,15 @@ frontend/src/
 ├── composables/
 │   ├── usePermissions.ts
 │   └── useAuth.ts
+├── router/routes/
+│   ├── asyncRoutes.ts              # 从 registry 生成
+│   ├── routePermissionRegistry.ts  # 唯一真相源
+│   └── utils/
+│       ├── buildFromRegistry.ts
+│       ├── filterRoutes.ts
+│       ├── permissionGroups.ts
+│       ├── routesToMenuList.ts
+│       └── toPermissionTree.ts
 ```
 
 ---
@@ -149,6 +162,11 @@ const { hasPermission } = usePermissions()
 - [x] useAuth Hook
 - [x] 页面级权限控制
 - [x] 按钮级权限控制
+- [x] asyncRoutes 动态路由（注册表驱动）
+- [x] permissionGroups 转换工具（扁平↔分组）
+- [x] filterRoutes 路由过滤
+- [x] routesToMenuList 菜单生成
+- [x] toPermissionTree 权限树生成
 
 ---
 

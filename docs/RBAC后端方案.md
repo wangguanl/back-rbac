@@ -38,13 +38,14 @@
 │  User   │──────<│  UserRole    │>──────│  Role   │
 └─────────┘       └──────────────┘       └────┬────┘
                                               │
+                                              │ 1:n
                                               │
-┌─────────┐       ┌──────────────┐       ┌────┴────┐
-│  Menu   │<──────<│  RoleMenu    │>──────┘         │
-└─────────┘       └──────────────┘                  │
-     │                                            │
-     └────────────────────────────────────────────┘
+                                       ┌──────┴──────┐
+                                       │RolePermission│
+                                       └──────────────┘
 ```
+
+> ⚠️ 2026-06-28 重构：菜单表 `sys_menu` 和角色菜单关联表 `sys_role_menu` 已移除，改为 `sys_role_permission` 直接存储 permission 字符串。
 
 ### 2.2 表结构
 
@@ -98,7 +99,7 @@ CREATE TABLE sys_menu (
     component_name VARCHAR(100) COMMENT '组件名称',
     redirect    VARCHAR(200) COMMENT '重定向地址',
     sort        INT DEFAULT 0 COMMENT '排序',
-    type        TINYINT NOT NULL COMMENT '类型：1目录 2菜单 3按钮',
+    type        TINYINT NOT NULL COMMENT '类型：0目录 1菜单 2按钮',
     title       VARCHAR(50) COMMENT '菜单标题',
     breadcrumb  TINYINT DEFAULT 1 COMMENT '是否显示面包屑',
     hidden       TINYINT DEFAULT 0 COMMENT '是否隐藏',
@@ -137,6 +138,18 @@ CREATE TABLE sys_role_menu (
     INDEX idx_role (role_id),
     INDEX idx_menu (menu_id)
 ) COMMENT '角色菜单关联表';
+
+> ⚠️ 2026-06-28 重构：`sys_menu` 和 `sys_role_menu` 表已移除，由上方的 `sys_role_permission` 替代。以下保留原始表结构作为历史参考。
+
+-- 角色-权限关联表（2026-06-28 新增，替代 sys_role_menu）
+CREATE TABLE sys_role_permission (
+    id          BIGINT PRIMARY KEY AUTO_INCREMENT,
+    role_id     BIGINT NOT NULL COMMENT '角色ID',
+    permission  VARCHAR(100) NOT NULL COMMENT '权限标识，如 user:list',
+    create_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_role_permission (role_id, permission),
+    INDEX idx_role (role_id)
+) COMMENT '角色权限关联表';
 
 -- 操作日志表
 CREATE TABLE sys_log (
@@ -181,29 +194,24 @@ CREATE TABLE sys_login_log (
 
 ## 三、项目目录结构
 
-### 3.1 轻量方案（Express + Prisma）
+### 3.1 项目结构（Express + Prisma）
 
 ```
+prisma/
+└── schema.prisma            # 数据库模型定义
 src/
 ├── config/
-│   ├── index.ts            # 配置文件
-│   ├── database.ts         # 数据库配置
-│   └── redis.ts           # Redis 配置
+│   └── index.ts            # 配置文件
 ├── common/
 │   ├── constants.ts        # 常量定义
 │   ├── exception.ts        # 异常处理
+│   ├── permissions.ts      # RoutePermissionGroup + ROUTE_ACTION_REGISTRY
 │   └── response.ts         # 统一响应
-├── decorators/
-│   ├── auth.decorator.ts   # 权限装饰器
-│   ├── log.decorator.ts    # 日志装饰器
-│   └── validate.decorator.ts
-├── entities/               # Prisma 实体
-│   └── schema.prisma
 ├── middleware/
-│   ├── auth.middleware.ts  # 认证中间件
-│   ├── rbac.middleware.ts  # 权限中间件
-│   ├── log.middleware.ts   # 日志中间件
-│   └── error.middleware.ts
+│   ├── auth.middleware.ts  # 认证中间件（JWT 验证 + 权限提取）
+│   ├── permission.middleware.ts  # 权限中间件（requirePermission）
+│   ├── error.middleware.ts # 全局错误处理
+│   └── rate-limit.middleware.ts  # 登录限流
 ├── modules/
 │   ├── auth/
 │   │   ├── auth.controller.ts
@@ -212,24 +220,21 @@ src/
 │   ├── user/
 │   │   ├── user.controller.ts
 │   │   ├── user.service.ts
-│   │   ├── user.route.ts
-│   │   ├── user.entity.ts
-│   │   └── dto/
-│   │       ├── create-user.dto.ts
-│   │       └── update-user.dto.ts
+│   │   └── user.route.ts
 │   ├── role/
 │   │   ├── role.controller.ts
 │   │   ├── role.service.ts
 │   │   └── role.route.ts
-│   └── menu/
-│       ├── menu.controller.ts
-│       ├── menu.service.ts
-│       └── menu.route.ts
+│   └── log/
+│       └── log.service.ts
+├── prisma/
+│   └── prisma.service.ts   # Prisma 客户端单例
+├── seed/
+│   └── seed.ts             # 数据库初始化种子
 ├── utils/
 │   ├── jwt.ts              # JWT 工具
 │   ├── password.ts         # 密码工具
-│   ├── ip.ts               # IP 地址工具
-│   └── snowflake.ts        # 分布式 ID
+│   └── redis.ts            # Redis 客户端
 ├── app.ts                  # 应用入口
 └── server.ts               # 服务启动
 ```
@@ -295,17 +300,15 @@ export function verifyToken(token: string): TokenPayload {
 
 ```typescript
 // src/modules/auth/auth.service.ts
-import { Injectable } from '@nestjs/common'
-import { PrismaService } from '@/modules/prisma/prisma.service'
-import { generateToken } from '@/utils/jwt'
+import { prisma } from '@/prisma/prisma.service'
+import { generateToken, generateRefreshToken } from '@/utils/jwt'
 import { comparePassword } from '@/utils/password'
+import { UnauthorizedException } from '@/common/exception'
+import redis from '@/utils/redis'
 
-@Injectable()
 export class AuthService {
-  constructor(private prisma: PrismaService) {}
-
-  async login(username: string, password: string) {
-    const user = await this.prisma.user.findUnique({
+  async login(username: string, password: string, ip?: string) {
+    const user = await prisma.user.findUnique({
       where: { username },
       include: { roles: { include: { role: true } } }
     })
@@ -319,238 +322,220 @@ export class AuthService {
     }
 
     const roles = user.roles.map(ur => ur.role.code)
+    const token = generateToken({ userId: Number(user.id), username: user.username, roles })
+    const refreshToken = generateRefreshToken({ userId: Number(user.id), username: user.username, roles })
+
+    // 将 token 存入 Redis
+    await redis.set(`token:${user.id}`, token, 'EX', 7200)
 
     return {
-      token: generateToken({ userId: user.id, username: user.username, roles }),
+      token,
+      refreshToken,
       userInfo: {
-        id: user.id,
+        id: Number(user.id),
         username: user.username,
         nickname: user.nickname,
         avatar: user.avatar,
+        email: user.email,
         roles
       }
     }
   }
 }
+
+export const authService = new AuthService()
 ```
 
 ### 4.2 权限验证（RBAC 中间件）
 
 ```typescript
-// src/middleware/rbac.middleware.ts
-import { Injectable, NestMiddleware } from '@nestjs/common'
+// src/middleware/auth.middleware.ts
 import { Request, Response, NextFunction } from 'express'
-import { PrismaService } from '@/modules/prisma/prisma.service'
 import { verifyToken } from '@/utils/jwt'
+import { prisma } from '@/prisma/prisma.service'
+import { UnauthorizedException } from '@/common/exception'
 
-@Injectable()
-export class RbacMiddleware implements NestMiddleware {
-  constructor(private prisma: PrismaService) {}
-
-  async use(req: Request, res: Response, next: NextFunction) {
-    const token = req.headers.authorization?.replace('Bearer ', '')
-    if (!token) {
-      return res.status(401).json({ code: 401, message: '未登录' })
+// 扩展 Express Request 类型
+declare global {
+  namespace Express {
+    interface Request {
+      user?: any
+      permissions?: string[]
     }
+  }
+}
 
-    try {
-      const payload = verifyToken(token)
-      const user = await this.prisma.user.findUnique({
-        where: { id: payload.userId },
-        include: {
-          roles: {
-            include: {
-              role: {
-                include: {
-                  menus: {
-                    include: { menu: true }
-                  }
-                }
-              }
+export async function authMiddleware(req: Request, res: Response, next: NextFunction) {
+  try {
+    const token = req.headers.authorization?.replace('Bearer ', '')
+    if (!token) throw new UnauthorizedException('未登录')
+
+    const payload = verifyToken(token)
+    const user = await prisma.user.findUnique({
+      where: { id: BigInt(payload.userId) },
+      include: {
+        roles: {
+          include: {
+            role: {
+              include: { permissions: true }
             }
           }
         }
-      })
-
-      if (!user || user.status !== 1) {
-        return res.status(401).json({ code: 401, message: '用户不存在或已禁用' })
       }
+    })
 
-      // 提取权限列表
-      const permissions = new Set<string>()
-      user.roles.forEach(ur => {
-        ur.role.menus.forEach(rm => {
-          if (rm.menu.permission) {
-            permissions.add(rm.menu.permission)
-          }
-        })
+    if (!user || user.status !== 1) throw new UnauthorizedException('用户不存在或已禁用')
+
+    // 提取权限列表（从 sys_role_permission 表）
+    const permissions = new Set<string>()
+    user.roles.forEach(ur => {
+      ur.role.permissions.forEach(rp => {
+        permissions.add(rp.permission)
       })
+    })
 
-      // 挂载到请求对象
-      ;(req as any).user = user
-      ;(req as any).permissions = Array.from(permissions)
-
-      next()
-    } catch {
-      return res.status(401).json({ code: 401, message: 'token无效' })
-    }
+    req.user = user
+    req.permissions = Array.from(permissions)
+    next()
+  } catch (error) {
+    next(new UnauthorizedException('登录已过期，请重新登录'))
   }
 }
 ```
 
-### 4.3 权限装饰器
+### 4.3 权限校验中间件
 
 ```typescript
-// src/common/decorators/auth.decorator.ts
-import { SetMetadata } from '@nestjs/common'
+// src/middleware/permission.middleware.ts
+import { Request, Response, NextFunction } from 'express'
+import { ForbiddenException } from '@/common/exception'
 
-export const Permission = (...permissions: string[]) =>
-  SetMetadata('permissions', permissions)
-
-// src/common/guards/permission.guard.ts
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common'
-import { Reflector } from '@nestjs/core'
-
-@Injectable()
-export class PermissionGuard implements CanActivate {
-  constructor(private reflector: Reflector) {}
-
-  canActivate(context: ExecutionContext): boolean {
-    const requiredPermissions = this.reflector.get<string[]>(
-      'permissions',
-      context.getHandler()
-    )
-
-    if (!requiredPermissions) {
-      return true
-    }
-
-    const request = context.switchToHttp().getRequest()
-    const userPermissions: string[] = request.permissions || []
-
-    return requiredPermissions.every(p => userPermissions.includes(p))
+// 工厂函数：返回一个中间件，校验指定权限
+export function requirePermission(...permissions: string[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const userPermissions = req.permissions || []
+    const hasPermission = permissions.some(p => userPermissions.includes(p))
+    if (!hasPermission) throw new ForbiddenException('无权限访问')
+    next()
   }
 }
 ```
 
 ```typescript
-// 控制器使用
-@Controller('user')
-export class UserController {
-  @Post()
-  @RequirePermission('user:add')
-  async create(@Body() dto: CreateUserDto) {
-    return this.userService.create(dto)
-  }
+// 路由中使用 - 通过中间件链式调用
+// src/modules/user/user.route.ts
+import { Router } from 'express'
+import { authMiddleware } from '@/middleware/auth.middleware'
+import { requirePermission } from '@/middleware/permission.middleware'
 
-  @Delete(':id')
-  @RequirePermission('user:delete')
-  async remove(@Param('id') id: number) {
-    return this.userService.remove(id)
-  }
-}
+const router = Router()
+
+// 所有接口都需要认证
+router.use(authMiddleware)
+
+// 各接口按需添加权限校验
+router.get('/', requirePermission('user:list'), userController.list)
+router.post('/', requirePermission('user:add'), userController.create)
+router.put('/:id', requirePermission('user:edit'), userController.update)
+router.delete('/:id', requirePermission('user:delete'), userController.remove)
 ```
 
 ### 4.4 角色分配权限
 
 ```typescript
 // src/modules/role/role.service.ts
-@Injectable()
+import { prisma } from '@/prisma/prisma.service'
+import { NotFoundException } from '@/common/exception'
+import {
+  flattenPermissionGroups,
+  groupPermissions,
+  validatePermissionGroups,
+  type RoutePermissionGroup
+} from '@/common/permissions'
+
 export class RoleService {
-  constructor(private prisma: PrismaService) {}
+  // 获取角色权限（返回按路由分组的权限列表）
+  async getPermissions(roleId: number): Promise<RoutePermissionGroup[]> {
+    const rows = await prisma.rolePermission.findMany({
+      where: { roleId: BigInt(roleId) },
+      select: { permission: true }
+    })
+    return groupPermissions(rows.map(r => r.permission))
+  }
 
-  // 分配菜单权限
-  async assignMenus(roleId: number, menuIds: number[]) {
-    // 开启事务
-    return this.prisma.$transaction(async (tx) => {
-      // 删除原有权限
-      await tx.roleMenu.deleteMany({ where: { roleId } })
+  // 分配权限（前端传入路由权限分组，如 [{ name: 'User', permissions: ['list','add'] }]）
+  async assignPermissions(roleId: number, groups: RoutePermissionGroup[]) {
+    const normalized = validatePermissionGroups(groups)
+    const flat = flattenPermissionGroups(normalized)
 
-      // 添加新权限
-      if (menuIds.length > 0) {
-        await tx.roleMenu.createMany({
-          data: menuIds.map(menuId => ({ roleId, menuId }))
+    // 事务：先删后增
+    await prisma.$transaction(async (tx) => {
+      await tx.rolePermission.deleteMany({ where: { roleId: BigInt(roleId) } })
+      if (flat.length > 0) {
+        await tx.rolePermission.createMany({
+          data: flat.map(permission => ({ roleId: BigInt(roleId), permission }))
         })
       }
-
-      return this.findOne(roleId)
     })
-  }
-
-  // 获取角色菜单
-  async getRoleMenus(roleId: number) {
-    const roleMenus = await this.prisma.roleMenu.findMany({
-      where: { roleId },
-      include: { menu: true }
-    })
-    return roleMenus.map(rm => rm.menu)
+    return { message: '权限分配成功' }
   }
 }
+
+export const roleService = new RoleService()
 ```
 
-### 4.5 获取用户路由菜单
+**权限分组规范**
+
+```typescript
+// src/common/permissions.ts
+// 前端传入格式：以路由 name 分组，permissions 为动作短名
+// 如 [{ name: 'User', permissions: ['list', 'add', 'edit', 'delete'] }]
+// 后端自动拼接为 'user:list'、'user:add' 等完整权限标识
+```
+
+### 4.5 获取前端路由菜单
 
 ```typescript
 // src/modules/menu/menu.service.ts
-@Injectable()
+import { prisma } from '@/prisma/prisma.service'
+
 export class MenuService {
-  constructor(private prisma: PrismaService) {}
-
-  // 获取用户的路由菜单（用于动态路由）
-  async getUserRoutes(userId: number) {
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-      include: {
-        roles: {
-          include: {
-            role: {
-              include: {
-                menus: {
-                  include: { menu: true },
-                  where: { menu: { type: { in: [1, 2] } } } // 只取目录和菜单
-                }
-              }
-            }
-          }
-        }
-      }
+  // 获取路由菜单（前端用于动态生成路由树）
+  async getRoutes() {
+    const menus = await prisma.menu.findMany({
+      where: { status: 1, deleted: 0 },
+      orderBy: { sort: 'asc' }
     })
-
-    // 去重并构建菜单树
-    const menuMap = new Map<number, any>()
-    user?.roles.forEach(ur => {
-      ur.role.menus.forEach(rm => {
-        menuMap.set(rm.menu.id, rm.menu)
-      })
-    })
-
-    return this.buildMenuTree(Array.from(menuMap.values()))
+    return this.buildTree(menus)
   }
 
-  // 构建菜单树
-  private buildMenuTree(menus: Menu[]) {
+  // 获取完整菜单树
+  async getTree() {
+    const menus = await prisma.menu.findMany({
+      where: { deleted: 0 },
+      orderBy: { sort: 'asc' }
+    })
+    return this.buildTree(menus)
+  }
+
+  private buildTree(menus: any[]) {
     const map = new Map<number, any>()
     const result: any[] = []
 
-    menus.forEach(menu => {
-      map.set(menu.id, { ...menu, children: [] })
-    })
-
-    menus.forEach(menu => {
-      const node = map.get(menu.id)!
-      if (menu.parentId === 0) {
+    menus.forEach(m => map.set(Number(m.id), { ...m, id: Number(m.id), children: [] }))
+    menus.forEach(m => {
+      const node = map.get(Number(m.id))!
+      if (m.parentId === 0) {
         result.push(node)
       } else {
-        const parent = map.get(menu.parentId)
-        if (parent) {
-          parent.children.push(node)
-        }
+        map.get(Number(m.parentId))?.children.push(node)
       }
     })
-
     return result
   }
 }
+
+export const menuService = new MenuService()
 ```
 
 ## 五、API 接口设计
@@ -611,24 +596,22 @@ export class MenuService {
 {
   "code": 200,
   "message": "success",
-  "data": {
-    "list": [
-      {
-        "id": 1,
-        "username": "admin",
-        "nickname": "管理员",
-        "email": "admin@example.com",
-        "status": 1,
-        "roles": [{ "id": 1, "code": "admin", "name": "超级管理员" }],
-        "createTime": "2024-01-01 10:00:00"
-      }
-    ],
-    "pagination": {
-      "page": 1,
-      "size": 10,
-      "total": 100,
-      "totalPages": 10
+  "data": [
+    {
+      "id": 1,
+      "username": "admin",
+      "nickname": "管理员",
+      "email": "admin@example.com",
+      "status": 1,
+      "roles": [{ "id": 1, "code": "admin", "name": "超级管理员" }],
+      "createTime": "2024-01-01 10:00:00"
     }
+  ],
+  "pagination": {
+    "page": 1,
+    "size": 10,
+    "total": 100,
+    "totalPages": 10
   }
 }
 ```
@@ -642,67 +625,30 @@ export class MenuService {
 | 新增角色 | POST | /api/roles | 新增角色 | role:add |
 | 修改角色 | PUT | /api/roles/:id | 修改角色 | role:edit |
 | 删除角色 | DELETE | /api/roles/:id | 删除角色 | role:delete |
-| 分配权限 | GET | /api/roles/:id/menus | 获取角色菜单 | role:query |
-| 分配权限 | POST | /api/roles/:id/menus | 分配角色菜单 | role:assign |
+| 获取权限 | GET | /api/roles/:id/permissions | 获取角色权限分组 | role:query |
+| 分配权限 | POST | /api/roles/:id/permissions | 分配角色权限 | role:assign |
 
-### 5.4 菜单模块
-
-| 接口 | 方法 | 路径 | 描述 | 权限 |
-|------|------|------|------|------|
-| 菜单树 | GET | /api/menus/tree | 获取菜单树 | menu:list |
-| 菜单列表 | GET | /api/menus | 获取菜单列表(平铺) | menu:list |
-| 菜单详情 | GET | /api/menus/:id | 获取菜单详情 | menu:query |
-| 新增菜单 | POST | /api/menus | 新增菜单 | menu:add |
-| 修改菜单 | PUT | /api/menus/:id | 修改菜单 | menu:edit |
-| 删除菜单 | DELETE | /api/menus/:id | 删除菜单 | menu:delete |
-
-**菜单树响应**
+**分配权限请求/响应**
 
 ```typescript
-// GET /api/menus/tree
+// POST /api/roles/:id/permissions
+// Request - 前端传入路由权限分组
+[
+  { "name": "User", "permissions": ["list", "add", "edit", "delete"] },
+  { "name": "Role", "permissions": ["list", "add", "edit", "delete"] },
+  { "name": "Menu", "permissions": ["list"] }
+]
+
+// 后端自动拼接为完整权限标识存入 sys_role_permission 表：
+// user:list, user:add, user:edit, user:delete, role:list, ...
+
 // Response
-{
-  "code": 200,
-  "message": "success",
-  "data": [
-    {
-      "id": 1,
-      "parentId": 0,
-      "path": "/system",
-      "name": "System",
-      "component": "Layout",
-      "redirect": "/system/user",
-      "type": 1,
-      "title": "系统管理",
-      "icon": "setting",
-      "children": [
-        {
-          "id": 2,
-          "parentId": 1,
-          "path": "user",
-          "name": "User",
-          "component": "/system/user/index",
-          "type": 2,
-          "title": "用户管理",
-          "icon": "user",
-          "children": [
-            {
-              "id": 3,
-              "parentId": 2,
-              "path": "",
-              "name": "UserAdd",
-              "component": "",
-              "type": 3,
-              "title": "新增用户",
-              "permission": "user:add"
-            }
-          ]
-        }
-      ]
-    }
-  ]
-}
+{ "code": 200, "message": "success", "data": { "message": "权限分配成功" } }
 ```
+
+### 5.4 菜单模块（已移除）
+
+> ⚠️ 2026-06-28 RolePermission 重构：菜单模块 `/api/menus/*` 已全部移除。前端路由由 `asyncRoutes.ts` 本地配置驱动，不再依赖后端菜单 API。菜单 CRUD 管理页面一并移除。
 
 ### 5.5 日志模块
 
@@ -800,7 +746,7 @@ app.use(xss())    // 过滤 XSS
                     └──────┬──────┘
                            │
                     ┌──────▼──────┐
-                    │   MySQL     │
+                    │ PostgreSQL  │
                     │  (主从复制)  │
                     └─────────────┘
 ```
@@ -828,9 +774,8 @@ app.use(xss())    // 过滤 XSS
 ### 第四阶段：权限核心
 1. 用户管理 CRUD
 2. 角色管理 CRUD
-3. 菜单管理 CRUD
-4. 权限分配功能
-5. 路由菜单生成
+3. 权限分配功能（RolePermission 模型）
+4. 权限中间件（requirePermission）
 
 ### 第五阶段：日志与安全
 1. 操作日志记录

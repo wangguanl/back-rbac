@@ -71,7 +71,7 @@ backend/src/
 import { Request, Response, NextFunction } from 'express'
 import { verifyToken } from '@/utils/jwt'
 import { prisma } from '@/prisma/prisma.service'
-import { UnauthorizedException } from '@/common/exception'
+import { UnauthorizedException, BusinessException } from '@/common/exception'
 
 declare global {
   namespace Express {
@@ -116,7 +116,12 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
     req.permissions = Array.from(permissions)
     next()
   } catch (error) {
-    next(error)
+    // JWT 过期或无效时，统一返回 401
+    if (error instanceof BusinessException) {
+      next(error)
+    } else {
+      next(new UnauthorizedException('登录已过期，请重新登录'))
+    }
   }
 }
 ```
@@ -306,12 +311,12 @@ curl http://localhost:3000/api/auth/userinfo \
 
 ## 本阶段交付物
 
-- [ ] Auth 模块完整
-- [ ] 4个认证接口
-- [ ] 认证中间件
-- [ ] 登录限流中间件
-- [ ] 登录日志记录
-- [ ] 初始化数据脚本
+- [x] Auth 模块完整
+- [x] 4个认证接口
+- [x] 认证中间件
+- [x] 登录限流中间件
+- [x] 登录日志记录
+- [x] 初始化数据脚本
 
 ---
 

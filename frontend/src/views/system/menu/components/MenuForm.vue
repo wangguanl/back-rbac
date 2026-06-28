@@ -12,21 +12,21 @@
       </el-form-item>
       <el-form-item label="菜单类型" prop="type">
         <el-radio-group v-model="form.type">
-          <el-radio value="directory">目录</el-radio>
-          <el-radio value="menu">菜单</el-radio>
-          <el-radio value="button">按钮</el-radio>
+          <el-radio :value="0">目录</el-radio>
+          <el-radio :value="1">菜单</el-radio>
+          <el-radio :value="2">按钮</el-radio>
         </el-radio-group>
       </el-form-item>
       <el-form-item label="菜单名称" prop="name">
         <el-input v-model="form.name" placeholder="请输入菜单名称" />
       </el-form-item>
-      <el-form-item label="图标" v-if="form.type !== 'button'">
+      <el-form-item label="图标" v-if="form.type !== 2">
         <el-input v-model="form.icon" placeholder="请输入图标名称" />
       </el-form-item>
-      <el-form-item label="路由路径" v-if="form.type !== 'button'">
+      <el-form-item label="路由路径" v-if="form.type !== 2">
         <el-input v-model="form.path" placeholder="请输入路由路径" />
       </el-form-item>
-      <el-form-item label="权限标识" prop="permission" v-if="form.type !== 'directory'">
+      <el-form-item label="权限标识" prop="permission" v-if="form.type !== 0">
         <el-input v-model="form.permission" placeholder="如: user:list" />
       </el-form-item>
       <el-form-item label="排序">
@@ -55,7 +55,7 @@ const formRef = ref()
 const submitting = ref(false)
 
 const form = reactive({
-  type: 'menu' as 'directory' | 'menu' | 'button',
+  type: 1 as number,
   name: '',
   icon: '',
   path: '',
@@ -81,12 +81,12 @@ watch(() => props.visible, async (val) => {
         form.path = m.path || ''
         form.permission = m.permission || ''
         form.sort = m.sort || 0
-        form.status = m.status
+        form.status = m.status ?? 1
       } catch {
         ElMessage.error('获取菜单信息失败')
       }
     } else {
-      form.type = 'menu'
+      form.type = 1
       form.name = ''
       form.icon = ''
       form.path = ''

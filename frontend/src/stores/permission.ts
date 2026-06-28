@@ -20,7 +20,20 @@ export const usePermissionStore = defineStore('permission', () => {
     const routeRes = await getMenuRoutesApi()
     const routeMenus = routeRes.data
 
-    menuList.value = routeMenus
+    menuList.value = [
+      {
+        id: 0,
+        parentId: 0,
+        path: '/dashboard',
+        name: 'Dashboard',
+        type: 1,
+        title: '首页',
+        icon: 'HomeFilled',
+        sort: 0,
+        children: []
+      },
+      ...routeMenus
+    ]
 
     const dynamicRoutes = generateRoutes(routeMenus)
 

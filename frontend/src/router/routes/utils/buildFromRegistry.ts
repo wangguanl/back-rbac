@@ -1,3 +1,4 @@
+import { markRaw } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
 import Layout from '@/components/layout/Layout.vue'
 import { toPermissionKey } from '@/router/routes/utils/permissionGroups'
@@ -115,13 +116,13 @@ export function buildAsyncRoutes(registry: Registry): RouteRecordRaw[] {
   return Object.values(registry).map(layout => ({
     path: layout.path,
     name: layout.name,
-    component: Layout,
+    component: markRaw(Layout),
     redirect: layout.redirect,
     meta: { title: layout.title, icon: layout.icon },
     children: Object.entries(layout.pages).map(([pageName, page]) => ({
       path: page.path,
       name: pageName,
-      component: page.load,
+      component: markRaw(page.load),
       meta: {
         title: page.title,
         icon: page.icon,

@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { markRaw, ref, shallowRef } from 'vue'
 import type { RouteRecordRaw } from 'vue-router'
 import Layout from '@/components/layout/Layout.vue'
 import router from '@/router'
@@ -19,12 +19,12 @@ function collectTopLevelRouteNames(routeList: RouteRecordRaw[]): string[] {
 const dashboardRoute: RouteRecordRaw = {
   path: '/dashboard',
   name: 'Dashboard',
-  component: Layout,
+  component: markRaw(Layout),
   redirect: '/dashboard/index',
   children: [
     {
       path: 'index',
-      component: () => import('@/views/dashboard/index.vue'),
+      component: markRaw(() => import('@/views/dashboard/index.vue')),
       meta: { title: '仪表盘' }
     }
   ]
@@ -38,7 +38,7 @@ const dashboardMenuItem: SidebarMenuItem = {
 }
 
 export const usePermissionStore = defineStore('permission', () => {
-  const routes = ref<RouteRecordRaw[]>([])
+  const routes = shallowRef<RouteRecordRaw[]>([])
   const menuList = ref<SidebarMenuItem[]>([])
   const addedRouteNames = ref<string[]>([])
 

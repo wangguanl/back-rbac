@@ -12,4 +12,3 @@ export const P = buildPermissionKeys(routePermissionRegistry)
 
 /** 按钮 ↔ API 权限绑定：Bind.System.User.Assign.permission / .apis */
 export const Bind = buildPermissionBindings(routePermissionRegistry, P)
-console.log(Bind)

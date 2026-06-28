@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from 'express'
 import { verifyToken } from '@/utils/jwt'
 import { prisma } from '@/prisma/prisma.service'
-import { UnauthorizedException } from '@/common/exception'
+import { BusinessException, UnauthorizedException } from '@/common/exception'
 
 declare global {
   namespace Express {
@@ -46,6 +46,11 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
     req.permissions = Array.from(permissions)
     next()
   } catch (error) {
-    next(error)
+    // JWT 过期或无效时，统一返回 401
+    if (error instanceof BusinessException) {
+      next(error)
+    } else {
+      next(new UnauthorizedException('登录已过期，请重新登录'))
+    }
   }
 }

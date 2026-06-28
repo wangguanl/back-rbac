@@ -6,6 +6,11 @@ const LIMIT_WINDOW = 15 * 60 // 15分钟
 const MAX_ATTEMPTS = 5
 
 export async function loginLimiter(req: Request, res: Response, next: NextFunction) {
+  // 开发环境跳过限流
+  if (process.env.NODE_ENV === 'development' || process.env.NODE_ENV === 'dev') {
+    return next()
+  }
+
   const ip = req.ip || req.socket.remoteAddress || 'unknown'
   const key = `login:rate:${ip}`
 

@@ -46,7 +46,7 @@ router.use(authMiddleware)
  *                         items:
  *                           type: object
  */
-router.get('/tree', requirePermission('menu:list'), controller.getTree)
+router.get('/tree', controller.getTree)
 
 /**
  * @openapi

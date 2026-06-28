@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { getToken, removeToken } from './auth'
 import router from '@/router'
 import type { ApiResponse } from '@/types/api'
@@ -23,19 +23,22 @@ service.interceptors.response.use(
     if (res.code !== 200) {
       ElMessage.error(res.message)
       if (res.code === 401) {
-        ElMessageBox.confirm('登录已过期', '提示', {
-          confirmButtonText: '重新登录'
-        }).then(() => {
-          removeToken()
-          router.push('/login')
-        })
+        removeToken()
+        router.push('/login')
       }
       return Promise.reject(new Error(res.message))
     }
     return res
   },
   error => {
-    ElMessage.error(error.message)
+    // HTTP 错误（如 500）时，尝试从 response 中提取错误信息
+    const msg = error.response?.data?.message || error.message
+    ElMessage.error(msg)
+    // 如果后端返回 401，清除 token 并跳转登录
+    if (error.response?.status === 401 || error.response?.data?.code === 401) {
+      removeToken()
+      router.push('/login')
+    }
     return Promise.reject(error)
   }
 )

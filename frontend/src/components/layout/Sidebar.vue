@@ -14,23 +14,25 @@
       <span v-show="!appStore.sidebarCollapsed" class="logo-title">RBAC 管理系统</span>
     </div>
     <template v-for="menu in permissionStore.menuList" :key="menu.id">
-      <el-sub-menu v-if="menu.children && menu.children.length" :index="menu.path">
+      <!-- 有可见子菜单的目录 -->
+      <el-sub-menu v-if="menu.children?.some(c => c.type === 1)" :index="menu.path || ''">
         <template #title>
           <el-icon v-if="menu.icon"><component :is="menu.icon" /></el-icon>
-          <span>{{ menu.name }}</span>
+          <span>{{ menu.title || menu.name }}</span>
         </template>
         <el-menu-item
-          v-for="child in menu.children"
+          v-for="child in menu.children.filter(c => c.type === 1)"
           :key="child.id"
-          :index="child.path"
+          :index="(menu.path || '') + '/' + child.path"
         >
           <el-icon v-if="child.icon"><component :is="child.icon" /></el-icon>
-          <span>{{ child.name }}</span>
+          <span>{{ child.title || child.name }}</span>
         </el-menu-item>
       </el-sub-menu>
-      <el-menu-item v-else :index="menu.path">
+      <!-- 无子菜单的菜单项（仅 type=1） -->
+      <el-menu-item v-else-if="menu.type === 1" :index="menu.path || ''">
         <el-icon v-if="menu.icon"><component :is="menu.icon" /></el-icon>
-        <span>{{ menu.name }}</span>
+        <span>{{ menu.title || menu.name }}</span>
       </el-menu-item>
     </template>
   </el-menu>

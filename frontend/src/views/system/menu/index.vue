@@ -61,14 +61,14 @@ const formMode = ref<'add' | 'edit'>('add')
 const currentId = ref(0)
 const parentId = ref(0)
 
-function typeLabel(type: string) {
-  const map: Record<string, string> = { directory: '目录', menu: '菜单', button: '按钮' }
-  return map[type] || type
+function typeLabel(type: number) {
+  const map: Record<number, string> = { 0: '目录', 1: '菜单', 2: '按钮' }
+  return map[type] || String(type)
 }
 
-function typeTag(type: string) {
-  const map: Record<string, string> = { directory: '', menu: 'success', button: 'warning' }
-  return map[type] || ''
+function typeTag(type: number) {
+  const map: Record<number, string> = { 0: 'info', 1: 'success', 2: 'warning' }
+  return map[type] || 'info'
 }
 
 async function fetchData() {

@@ -16,7 +16,7 @@ router.beforeEach(async (to, _from, next) => {
         await userStore.getUserInfo()
         const routes = await permissionStore.loadRoutes()
         routes.forEach(r => router.addRoute(r))
-        next({ ...to, replace: true })
+        next({ path: to.fullPath, replace: true })
       } catch {
         userStore.resetState()
         next(`/login?redirect=${to.path}`)

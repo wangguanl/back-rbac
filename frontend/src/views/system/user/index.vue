@@ -95,9 +95,13 @@ async function fetchData() {
   loading.value = true
   try {
     const res = await getUserListApi({ page: pagination.page, pageSize: pagination.pageSize, username: search.username || undefined, status: search.status })
-    tableData.value = res.data.list || []
-    pagination.total = res.data.total || 0
-  } catch {
+    console.log('[user] fetchData res:', res)
+    console.log('[user] res.data:', res.data)
+    console.log('[user] res.pagination:', res.pagination)
+    tableData.value = res.data || []
+    pagination.total = res.pagination?.total || 0
+  } catch (e) {
+    console.error('[user] fetchData error:', e)
     ElMessage.error('获取用户列表失败')
   } finally {
     loading.value = false

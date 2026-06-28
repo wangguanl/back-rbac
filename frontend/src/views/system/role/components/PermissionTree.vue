@@ -15,6 +15,7 @@
           :data="menuTree"
           show-checkbox
           node-key="id"
+          :props="{ label: 'title', children: 'children' }"
           :default-checked-keys="checkedKeys"
           default-expand-all
         />

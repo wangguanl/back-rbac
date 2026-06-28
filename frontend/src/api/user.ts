@@ -1,10 +1,10 @@
 import request from '@/utils/request'
-import type { ApiResponse, PageResult, PageParams } from '@/types/api'
+import type { ApiResponse, PageParams } from '@/types/api'
 import type { UserInfo } from '@/types/user'
 
 /** 获取用户列表 */
 export function getUserListApi(params: PageParams & { username?: string; status?: number }) {
-  return request.get<PageResult<UserInfo>>('/users', { params })
+  return request.get<UserInfo[]>('/users', { params })
 }
 
 /** 获取用户详情 */

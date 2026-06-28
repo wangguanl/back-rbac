@@ -1,10 +1,10 @@
 import request from '@/utils/request'
-import type { ApiResponse, PageResult } from '@/types/api'
+import type { ApiResponse } from '@/types/api'
 import type { RoleInfo, RoleQueryParams } from '@/types/role'
 
 /** 获取角色列表 */
 export function getRoleListApi(params: RoleQueryParams) {
-  return request.get<PageResult<RoleInfo>>('/roles', { params })
+  return request.get<RoleInfo[]>('/roles', { params })
 }
 
 /** 获取角色详情 */

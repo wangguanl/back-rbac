@@ -3,16 +3,17 @@ export interface MenuInfo {
   id: number
   parentId: number
   name: string
-  type: 'directory' | 'menu' | 'button'
-  path: string
-  component: string
-  icon: string
-  permission: string
+  /** 0=目录, 1=菜单, 2=按钮 */
+  type: number
+  title?: string
+  path?: string
+  component?: string
+  icon?: string
+  permission?: string
   sort: number
-  status: number
+  status?: number
+  hidden?: number
   children?: MenuInfo[]
-  createdAt: string
-  updatedAt: string
 }
 
 /** 菜单树节点 */

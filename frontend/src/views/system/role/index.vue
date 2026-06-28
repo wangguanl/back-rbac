@@ -77,9 +77,11 @@ async function fetchData() {
   loading.value = true
   try {
     const res = await getRoleListApi({ page: pagination.page, pageSize: pagination.pageSize, name: search.name || undefined, code: search.code || undefined })
-    tableData.value = res.data.list || []
-    pagination.total = res.data.total || 0
-  } catch {
+    console.log('[role] fetchData res:', res)
+    tableData.value = res.data || []
+    pagination.total = res.data?.length || 0
+  } catch (e) {
+    console.error('[role] fetchData error:', e)
     ElMessage.error('获取角色列表失败')
   } finally {
     loading.value = false

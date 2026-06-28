@@ -27,7 +27,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import { assignUserRolesApi } from '@/api/user'
+import { assignUserRolesApi, getUserByIdApi } from '@/api/user'
 import { getRoleListApi } from '@/api/role'
 
 const props = defineProps<{ visible: boolean; userId: number }>()
@@ -41,8 +41,14 @@ watch(() => props.visible, async (val) => {
   if (val) {
     selectedRoles.value = []
     try {
-      const res = await getRoleListApi({ page: 1, pageSize: 100 })
-      roleList.value = (res.data.list || []).map((r: any) => ({ id: r.id, name: r.name }))
+      const [roleRes, userRes] = await Promise.all([
+        getRoleListApi({ page: 1, pageSize: 100 }),
+        getUserByIdApi(props.userId)
+      ])
+      roleList.value = (roleRes.data || []).map((r: any) => ({ id: r.id, name: r.name }))
+      // 回显用户已有的角色
+      const userRoles = (userRes.data as any)?.roles || []
+      selectedRoles.value = userRoles.map((r: any) => r.id)
     } catch {
       ElMessage.error('获取角色列表失败')
     }

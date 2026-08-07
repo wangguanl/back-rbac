@@ -6,6 +6,7 @@ import { errorHandler } from '@/middleware/error.middleware'
 import authRoutes from '@/modules/auth/auth.route'
 import userRoutes from '@/modules/user/user.route'
 import roleRoutes from '@/modules/role/role.route'
+import logRoutes from '@/modules/log/log.route'
 
 const app = express()
 
@@ -18,6 +19,7 @@ app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec))
 app.use('/api/auth', authRoutes)
 app.use('/api/users', userRoutes)
 app.use('/api/roles', roleRoutes)
+app.use('/api/logs', logRoutes)
 
 app.get('/api/health', (req, res) => {
   res.json({ code: 200, message: 'ok', data: { status: 'running', timestamp: new Date().toISOString() } })

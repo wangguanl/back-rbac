@@ -71,6 +71,16 @@ export const routePermissionRegistry = {
           Delete: { action: 'delete', title: '删除', kind: 'both' },
           Assign: { action: 'assign', title: '分配权限', kind: 'both' }
         }
+      },
+      Log: {
+        path: 'log',
+        title: '日志管理',
+        icon: 'Document',
+        load: () => import('@/views/system/log/index.vue'),
+        permissions: {
+          List: { action: 'list', title: '访问页面', kind: 'page' },
+          Query: { action: 'query', title: '查看详情', kind: 'api' }
+        }
       }
     }
   }

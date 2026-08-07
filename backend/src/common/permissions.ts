@@ -7,7 +7,8 @@ export interface RoutePermissionGroup {
 
 export const ROUTE_ACTION_REGISTRY = {
   User: ['list', 'query', 'add', 'edit', 'delete', 'assign', 'resetPwd'],
-  Role: ['list', 'query', 'add', 'edit', 'delete', 'assign']
+  Role: ['list', 'query', 'add', 'edit', 'delete', 'assign'],
+  Log: ['list', 'query']
 } as const
 
 export type RouteName = keyof typeof ROUTE_ACTION_REGISTRY

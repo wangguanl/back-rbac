@@ -47,9 +47,8 @@
 | 前端-Phase 3 | 权限核心 | 1天 |
 | 前端-Phase 4 | 功能模块 | 2天 |
 | 前端-Phase 5 | 联调测试 | 0.5天 |
-| 前端-Phase 6 | asyncRoutes 改造 | 1天 |
 
-**前端总计：6.5天**
+**前端总计：5.5天**
 
 ---
 
@@ -97,10 +96,7 @@
     ├── 前端-Phase 3 - 权限核心.md
     ├── 前端-Phase 4 - 功能模块.md
     ├── 前端-Phase 5 - 联调测试.md
-    ├── 前端-Phase 6 - asyncRoutes改造.md
     ├── Phase Final - 项目交付.md
-    ├── 改造方案-前端-asyncRoutes落地方案.md
-    ├── 改造方案-后端-RolePermission落地方案.md
     └── progress.md
 ```
 
@@ -147,17 +143,15 @@
 | 6 | 进度追踪文件 | ✅ 已完成 |
 | 7 | 质量缺口修复 | ✅ 已完成 |
 | 8 | 文档对齐 | ✅ 已完成 |
-| 9 | asyncRoutes 改造 | ✅ 已完成 |
-| 10 | 后端 RolePermission 改造 | ✅ 已完成 |
 
-### 质量缺口修复明细（2026-06-28）
+### 质量缺口修复明细（2026-08-06）
 
 | 缺口 | 状态 | 说明 |
 |------|------|------|
 | 登出不完整 | ✅ | Header → useAuth().logout() → clearSession() 统一链路 |
 | 双 token 存储 | ✅ | Pinia persist + rbac_token 双写同步维护 |
-| Redis token 校验 | ⚠️ | 开发环境跳过，生产环境通过环境变量启用 |
-| 日志模块 HTTP | ⏳ | 数据库就绪，HTTP 接口后续按需补齐 |
+| Redis token 校验 | ✅ | authMiddleware 增加 Redis 会话校验（fail-closed），生产 `REDIS_SESSION_CHECK=true` 启用 |
+| 日志模块 HTTP | ✅ | `/api/logs/login`、`/api/logs/operation`、`/api/logs/operation/:id` + 前端日志管理页 |
 | 文档示例过时 | ✅ | RBAC前端方案.md、Phase 文档已对齐实际代码 |
 
 ---

@@ -1,6 +1,8 @@
 import { Request, Response, NextFunction } from 'express'
 import { verifyToken } from '@/utils/jwt'
 import { prisma } from '@/prisma/prisma.service'
+import { config } from '@/config'
+import redis from '@/utils/redis'
 import { BusinessException, UnauthorizedException } from '@/common/exception'
 
 declare global {
@@ -18,6 +20,15 @@ export async function authMiddleware(req: Request, res: Response, next: NextFunc
     if (!token) throw new UnauthorizedException('未登录')
 
     const payload = verifyToken(token)
+
+    // Redis 会话校验（fail-closed）：登出 / 踢人 / 换端登录后立即失效
+    if (config.redis.checkSession) {
+      const cachedToken = await redis.get(`token:${payload.userId}`)
+      if (!cachedToken || cachedToken !== token) {
+        throw new UnauthorizedException('登录已失效，请重新登录')
+      }
+    }
+
     const user = await prisma.user.findUnique({
       where: { id: BigInt(payload.userId) },
       include: {

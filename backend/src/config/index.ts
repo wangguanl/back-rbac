@@ -15,6 +15,8 @@ export const config = {
   redis: {
     host: process.env.REDIS_HOST || 'localhost',
     port: parseInt(process.env.REDIS_PORT || '6379', 10),
-    password: process.env.REDIS_PASSWORD || undefined
+    password: process.env.REDIS_PASSWORD || undefined,
+    // 是否启用 Redis 会话校验（生产建议 true，开发可关闭以便无 Redis 调试）
+    checkSession: process.env.REDIS_SESSION_CHECK === 'true'
   }
 }

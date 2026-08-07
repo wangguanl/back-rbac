@@ -391,21 +391,8 @@ backend/
 - TypeScript文件需正确配置扫描路径
 - 需要认证的接口添加 `security: [bearerAuth: []]`
 - 权限控制接口标注所需权限
-- **权限传输格式**：统一使用 `RoutePermissionGroup[]`（`{ name, permissions[] }`），前端 `flattenPermissionGroups()` 转为扁平 `user:list` 供 v-auth 使用
 
-## 10. 已废弃接口
-
-> 以下接口已移除，不再可用：
-
-| 接口 | 说明 |
-|------|------|
-| `GET /api/menus/tree` | 菜单树（已由前端 asyncRoutes 替代） |
-| `GET /api/menus/routes` | 用户菜单路由（已由前端 filterRoutes 替代） |
-| `GET/POST/PUT/DELETE /api/menus/*` | 菜单 CRUD（菜单管理模块已移除） |
-| `GET /api/roles/:id/menus` | 角色菜单（由 permissions 替代） |
-| `POST /api/roles/:id/menus` | 分配角色菜单（由 permissions 替代） |
-
-## 11. 集成到Express应用
+## 10. 集成到Express应用
 
 ```typescript
 // src/app.ts
